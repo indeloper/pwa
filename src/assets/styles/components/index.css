@@ -1,0 +1,11 @@
+/* Component Styles Index */
+
+/* Import all component styles */
+@import './button.css';
+@import './avatar.css';
+@import './dropdown.css';
+
+/* Add other component styles here as they are created */
+/* @import './input.css'; */
+/* @import './modal.css'; */
+/* etc. */

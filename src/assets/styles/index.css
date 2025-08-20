@@ -1,0 +1,15 @@
+/* Main Styles Index */
+
+/* Import Tailwind CSS */
+@import "tailwindcss";
+
+/* Import fonts */
+@import "../fonts/montserrat.css";
+
+/* Import component styles */
+@import "./components/index.css";
+
+/* Global styles */
+body {
+  font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}

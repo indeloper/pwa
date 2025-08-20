@@ -1,0 +1,3 @@
+/* Import main styles from assets */
+@import "./assets/styles/index.css";
+@import 'primeicons/primeicons.css'

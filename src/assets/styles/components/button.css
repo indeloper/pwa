@@ -1,0 +1,303 @@
+/* Button Component Styles */
+
+:root {
+  /* Color tokens */
+  --btn-primary: theme('colors.gray.800');
+  --btn-primary-hover: theme('colors.gray.600');
+  --btn-primary-active: theme('colors.gray.700');
+  
+  --btn-secondary: theme('colors.gray.100');
+  --btn-secondary-hover: theme('colors.gray.200');
+  --btn-secondary-active: theme('colors.gray.300');
+  
+  --btn-info: theme('colors.blue.500');
+  --btn-info-hover: theme('colors.blue.600');
+  --btn-info-active: theme('colors.blue.700');
+  
+  --btn-success: theme('colors.green.500');
+  --btn-success-hover: theme('colors.green.600');
+  --btn-success-active: theme('colors.green.700');
+  
+  --btn-warning: theme('colors.orange.500');
+  --btn-warning-hover: theme('colors.orange.600');
+  --btn-warning-active: theme('colors.orange.700');
+  
+  --btn-error: theme('colors.red.500');
+  --btn-error-hover: theme('colors.red.600');
+  --btn-error-active: theme('colors.red.700');
+  
+  --btn-neutral: theme('colors.gray.400');
+  --btn-neutral-hover: theme('colors.gray.500');
+  --btn-neutral-active: theme('colors.gray.600');
+}
+
+/* Base button styles */
+.btn {
+  @apply inline-flex items-center justify-center font-medium transition-all duration-200 ease-in-out rounded cursor-pointer;
+  @apply focus:outline-none focus:ring-2 focus:ring-offset-2;
+  @apply disabled:opacity-50 disabled:cursor-not-allowed disabled:pointer-events-none;
+}
+
+/* Size variants */
+.btn--xs { @apply px-2 py-1 text-xs; }
+.btn--sm { @apply px-2.5 py-1.5 text-sm; }
+.btn--md { @apply px-3 py-2 text-base; }
+.btn--lg { @apply px-4 py-2.5 text-lg; }
+.btn--xl { @apply px-6 py-3 text-lg; }
+
+/* Icon only variants */
+.btn--icon-only { @apply p-2 aspect-square; }
+.btn--icon-only.btn--xs { @apply p-1; }
+.btn--icon-only.btn--sm { @apply p-1.5; }
+.btn--icon-only.btn--lg { @apply p-2.5; }
+.btn--icon-only.btn--xl { @apply p-3; }
+
+/* Filled variant (solid background) */
+.btn--filled {
+  @apply text-white shadow-sm;
+}
+
+.btn--filled.btn--primary {
+  background-color: var(--btn-primary);
+  @apply focus:ring-teal-500;
+}
+.btn--filled.btn--primary:hover { background-color: var(--btn-primary-hover); }
+.btn--filled.btn--primary:active { background-color: var(--btn-primary-active); }
+
+.btn--filled.btn--secondary {
+  background-color: var(--btn-secondary);
+  color: theme('colors.gray.800');
+  @apply focus:ring-gray-400;
+}
+.btn--filled.btn--secondary:hover { background-color: var(--btn-secondary-hover); }
+.btn--filled.btn--secondary:active { background-color: var(--btn-secondary-active); }
+
+.btn--filled.btn--info {
+  background-color: var(--btn-info);
+  @apply focus:ring-blue-500;
+}
+.btn--filled.btn--info:hover { background-color: var(--btn-info-hover); }
+.btn--filled.btn--info:active { background-color: var(--btn-info-active); }
+
+.btn--filled.btn--success {
+  background-color: var(--btn-success);
+  @apply focus:ring-green-500;
+}
+.btn--filled.btn--success:hover { background-color: var(--btn-success-hover); }
+.btn--filled.btn--success:active { background-color: var(--btn-success-active); }
+
+.btn--filled.btn--warning {
+  background-color: var(--btn-warning);
+  @apply focus:ring-orange-500;
+}
+.btn--filled.btn--warning:hover { background-color: var(--btn-warning-hover); }
+.btn--filled.btn--warning:active { background-color: var(--btn-warning-active); }
+
+.btn--filled.btn--error {
+  background-color: var(--btn-error);
+  @apply focus:ring-red-500;
+}
+.btn--filled.btn--error:hover { background-color: var(--btn-error-hover); }
+.btn--filled.btn--error:active { background-color: var(--btn-error-active); }
+
+/* Outlined variant (border + transparent background) */
+.btn--outlined {
+  @apply bg-transparent border-2 shadow-sm;
+}
+
+.btn--outlined.btn--primary {
+  border-color: var(--btn-primary);
+  color: var(--btn-primary);
+  @apply focus:ring-gray-800;
+}
+.btn--outlined.btn--primary:hover {
+  background-color: var(--btn-primary);
+  color: white;
+}
+
+.btn--outlined.btn--secondary {
+  border-color: var(--btn-secondary);
+  color: var(--btn-secondary);
+  @apply focus:ring-gray-500;
+}
+.btn--outlined.btn--secondary:hover {
+  background-color: var(--btn-secondary);
+  color: white;
+}
+
+.btn--outlined.btn--info {
+  border-color: var(--btn-info);
+  color: var(--btn-info);
+  @apply focus:ring-blue-500;
+}
+.btn--outlined.btn--info:hover {
+  background-color: var(--btn-info);
+  color: white;
+}
+
+.btn--outlined.btn--success {
+  border-color: var(--btn-success);
+  color: var(--btn-success);
+  @apply focus:ring-green-500;
+}
+.btn--outlined.btn--success:hover {
+  background-color: var(--btn-success);
+  color: white;
+}
+
+.btn--outlined.btn--warning {
+  border-color: var(--btn-warning);
+  color: var(--btn-warning);
+  @apply focus:ring-orange-500;
+}
+.btn--outlined.btn--warning:hover {
+  background-color: var(--btn-warning);
+  color: white;
+}
+
+.btn--outlined.btn--error {
+  border-color: var(--btn-error);
+  color: var(--btn-error);
+  @apply focus:ring-red-500;
+}
+.btn--outlined.btn--error:hover {
+  background-color: var(--btn-error);
+  color: white;
+}
+
+/* Text variant (no background, no border) */
+.btn--text {
+  @apply bg-transparent border-none shadow-none;
+}
+
+.btn--text.btn--primary {
+  color: var(--btn-primary);
+  @apply focus:ring-gray-800;
+}
+.btn--text.btn--primary:hover {
+  background-color: color-mix(in srgb, var(--btn-primary) 10%, transparent);
+}
+
+.btn--text.btn--secondary {
+  color: var(--btn-secondary);
+  @apply focus:ring-gray-500;
+}
+.btn--text.btn--secondary:hover {
+  background-color: color-mix(in srgb, var(--btn-secondary) 10%, transparent);
+}
+
+.btn--text.btn--info {
+  color: var(--btn-info);
+  @apply focus:ring-blue-500;
+}
+.btn--text.btn--info:hover {
+  background-color: color-mix(in srgb, var(--btn-info) 10%, transparent);
+}
+
+.btn--text.btn--success {
+  color: var(--btn-success);
+  @apply focus:ring-green-500;
+}
+.btn--text.btn--success:hover {
+  background-color: color-mix(in srgb, var(--btn-success) 10%, transparent);
+}
+
+.btn--text.btn--warning {
+  color: var(--btn-warning);
+  @apply focus:ring-orange-500;
+}
+.btn--text.btn--warning:hover {
+  background-color: color-mix(in srgb, var(--btn-warning) 10%, transparent);
+}
+
+.btn--text.btn--error {
+  color: var(--btn-error);
+  @apply focus:ring-red-500;
+}
+.btn--text.btn--error:hover {
+  background-color: color-mix(in srgb, var(--btn-error) 10%, transparent);
+}
+
+/* Dashed variant */
+.btn--dashed {
+  @apply bg-transparent border-2 border-dashed shadow-none;
+}
+
+.btn--dashed.btn--primary {
+  border-color: var(--btn-primary);
+  color: var(--btn-primary);
+  @apply focus:ring-gray-800;
+}
+.btn--dashed.btn--primary:hover {
+  background-color: color-mix(in srgb, var(--btn-primary) 10%, transparent);
+}
+
+.btn--dashed.btn--secondary {
+  border-color: var(--btn-secondary);
+  color: var(--btn-secondary);
+  @apply focus:ring-gray-500;
+}
+.btn--dashed.btn--secondary:hover {
+  background-color: color-mix(in srgb, var(--btn-secondary) 10%, transparent);
+}
+
+.btn--dashed.btn--info {
+  border-color: var(--btn-info);
+  color: var(--btn-info);
+  @apply focus:ring-blue-500;
+}
+.btn--dashed.btn--info:hover {
+  background-color: color-mix(in srgb, var(--btn-info) 10%, transparent);
+}
+
+.btn--dashed.btn--success {
+  border-color: var(--btn-success);
+  color: var(--btn-success);
+  @apply focus:ring-green-500;
+}
+.btn--dashed.btn--success:hover {
+  background-color: color-mix(in srgb, var(--btn-success) 10%, transparent);
+}
+
+.btn--dashed.btn--warning {
+  border-color: var(--btn-warning);
+  color: var(--btn-warning);
+  @apply focus:ring-orange-500;
+}
+.btn--dashed.btn--warning:hover {
+  background-color: color-mix(in srgb, var(--btn-warning) 10%, transparent);
+}
+
+.btn--dashed.btn--error {
+  border-color: var(--btn-error);
+  color: var(--btn-error);
+  @apply focus:ring-red-500;
+}
+.btn--dashed.btn--error:hover {
+  background-color: color-mix(in srgb, var(--btn-error) 10%, transparent);
+}
+
+/* Loading state */
+.btn--loading {
+  @apply cursor-wait;
+}
+
+/* Loading spinner */
+.btn__spinner {
+  @apply inline-flex items-center;
+}
+
+/* Button content wrapper */
+.btn__content {
+  @apply inline-flex items-center gap-2;
+}
+
+/* Fluid width */
+.btn--fluid {
+  @apply w-full;
+}
+
+/* Rounded variants */
+.btn--rounded { @apply rounded-md; }
+.btn--rounded-full { @apply rounded-full; }
+.btn--rounded-none { @apply rounded-none; }
