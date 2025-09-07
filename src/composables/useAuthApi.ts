@@ -11,9 +11,9 @@ export function useAuthApi() {
   const get = async <T = any>(url: string, config?: any): Promise<T> => {
     loading.value = true;
     error.value = null;
-    
+
     try {
-      const data = await http.getAuth<T>(url, { withCredentials: true, ...config });
+      const data = await http.getAuth<T>(url, config);
       return data;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Произошла ошибка';
@@ -28,9 +28,9 @@ export function useAuthApi() {
   const post = async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
     loading.value = true;
     error.value = null;
-    
+
     try {
-      const response = await http.postAuth<T>(url, data, { withCredentials: true, ...config });
+      const response = await http.postAuth<T>(url, data, config);
       return response;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Произошла ошибка';
@@ -45,9 +45,9 @@ export function useAuthApi() {
   const put = async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
     loading.value = true;
     error.value = null;
-    
+
     try {
-      const response = await http.putAuth<T>(url, data, { withCredentials: true, ...config });
+      const response = await http.putAuth<T>(url, data, config);
       return response;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Произошла ошибка';
@@ -62,9 +62,9 @@ export function useAuthApi() {
   const patch = async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
     loading.value = true;
     error.value = null;
-    
+
     try {
-      const response = await http.patchAuth<T>(url, data, { withCredentials: true, ...config });
+      const response = await http.patchAuth<T>(url, data, config);
       return response;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Произошла ошибка';
@@ -79,9 +79,9 @@ export function useAuthApi() {
   const del = async <T = any>(url: string, config?: any): Promise<T> => {
     loading.value = true;
     error.value = null;
-    
+
     try {
-      const response = await http.deleteAuth<T>(url, { withCredentials: true, ...config });
+      const response = await http.deleteAuth<T>(url, config);
       return response;
     } catch (err: any) {
       const errorMessage = err.response?.data?.message || err.message || 'Произошла ошибка';
@@ -92,6 +92,7 @@ export function useAuthApi() {
     }
   };
 
+  // useAuthApi.ts — расширение только метода getStream
   const getStream = <T = any>(
     url: string,
     handlers?: {
@@ -99,15 +100,28 @@ export function useAuthApi() {
       onError?: (ev: Event) => void;
       onOpen?: (ev: Event) => void;
       withCredentials?: boolean;
+      events?: Record<string, (data: any, ev: MessageEvent) => void>;
     }
   ) => {
     const base = import.meta.env.VITE_API_BASE_URL || 'http://localhost:8000/api';
-    let fullUrl = url.startsWith('http') ? url : `${base}${url}`;
-    
+    const fullUrl = url.startsWith('http') ? url : `${base}${url}`;
+
     const es = new EventSource(fullUrl, { withCredentials: handlers?.withCredentials ?? true });
-  
+
     if (handlers?.onOpen) es.onopen = handlers.onOpen;
-  
+
+    if (handlers?.events) {
+      for (const [eventName, fn] of Object.entries(handlers.events)) {
+        es.addEventListener(eventName, (ev: MessageEvent) => {
+          try {
+            fn(JSON.parse(ev.data), ev);
+          } catch {
+            fn(ev.data as unknown as any, ev);
+          }
+        });
+      }
+    }
+
     es.onmessage = (ev) => {
       try {
         handlers?.onMessage?.(JSON.parse(ev.data) as T, ev);
@@ -115,9 +129,9 @@ export function useAuthApi() {
         handlers?.onMessage?.((ev.data as unknown) as T, ev);
       }
     };
-  
+
     if (handlers?.onError) es.onerror = handlers.onError;
-  
+
     return {
       eventSource: es,
       close: () => es.close(),

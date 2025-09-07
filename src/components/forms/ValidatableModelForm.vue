@@ -4,6 +4,7 @@ import Button from 'primevue/button';
 import Divider from 'primevue/divider';
 import { computed, ref } from 'vue';
 import { keyBy } from 'lodash';
+import { DEFAULT_CANCEL_BUTTON_PROPS, DEFAULT_SAVE_BUTTON_PROPS } from '@/constants';
 
 const emit = defineEmits<{
     (e: 'submit', model: T): void;
@@ -11,12 +12,12 @@ const emit = defineEmits<{
 }>();
 
 const model = defineModel<T>('model', { required: true });
+const loading = defineModel<boolean>('loading', { required: true });
 const submitted = ref(false);
 
 const handleSubmit = () => {
     submitted.value = true;
     
-    // Если есть ошибки валидации - не отправляем форму
     if (!model.value.isValid()) {
         return;
     }
@@ -30,7 +31,6 @@ const handleCancel = () => {
 };
 
 const errors = computed(() => {
-    // Показываем ошибки только после попытки отправки
     if (!submitted.value) {
         return {};
     }
@@ -42,11 +42,11 @@ const errors = computed(() => {
 
 <template>
     <div>
-        <slot :model="model" :errors="errors" />
+        <slot :model="model" :errors="errors" :touched="submitted" />
         <Divider />
         <div class="flex gap-2 justify-end">
-            <Button severity="secondary" label="Отмена" @click="handleCancel" />
-            <Button label="Сохранить" @click="handleSubmit" />
+            <Button v-bind="DEFAULT_CANCEL_BUTTON_PROPS" @click="handleCancel" :disabled="loading" />
+            <Button v-bind="DEFAULT_SAVE_BUTTON_PROPS" @click="handleSubmit" :disabled="loading" />
         </div>
     </div>
 </template>

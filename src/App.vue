@@ -6,6 +6,13 @@ import { storeToRefs } from 'pinia';
 import ConfirmDialog from 'primevue/confirmdialog';
 import DynamicDialog from 'primevue/dynamicdialog';
 import Toast from 'primevue/toast';
+import Loader from './components/ui/Loader.vue';
+// Демонстрация: запуск тестового прогресс-лоадера только в dev
+if (import.meta.env.DEV) {
+  import('@/workers/tasks/demoLoaderProgress').then(({ enqueueDemoLoaderProgressTask }) => {
+    enqueueDemoLoaderProgressTask('system-loader');
+  });
+}
 const authStore = useAuthStore();
 const { isAuthenticated } = storeToRefs(authStore);
 
@@ -16,15 +23,15 @@ onMounted(() => {
 
 <template>
   <div class="font-montserrat">
-    <Authenticated v-if="isAuthenticated">
+    <Authenticated>
       <router-view />
     </Authenticated>
-    <router-view v-else />
     <ConfirmDialog></ConfirmDialog>
-    <Toast></Toast>
+    <Toast position="top-center" group="toast"></Toast>
+    <Toast position="bottom-center" group="system-toast"></Toast>
     <DynamicDialog></DynamicDialog>
+    <Loader></Loader>
   </div>
 </template>
 
-<style scoped>
-</style>
+<style scoped></style>

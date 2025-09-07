@@ -11,6 +11,7 @@ export interface IMaterialUnit extends IModel<IMaterialUnit>, ITransformable<IMa
     label: string;
     name: string;
     description: string | null;
+    coefficient: number;
     display_name: string;
 }
 
@@ -22,43 +23,36 @@ class MaterialUnit extends BaseModel<IMaterialUnit> implements IMaterialUnit {
     @To(Strategy.API_REQUEST, 'id')
     id?: number;
 
-    @From(Strategy.API_RESPONSE, 'attributes.label')
+    @From(Strategy.API_RESPONSE, 'label')
     @To(Strategy.API_REQUEST, 'label')
     @Validate([ValidationRules.required('Короткое наименование обязательно для заполнения')])
     label: string = '';
 
-    @From(Strategy.API_RESPONSE, 'attributes.name')
+    @From(Strategy.API_RESPONSE, 'name')
     @To(Strategy.API_REQUEST, 'name')
-    @Validate([ValidationRules.required('Наименование обязательно для заполнения')])
+    @Validate([
+        ValidationRules.required('Наименование обязательно для заполнения'),
+        ValidationRules.minLength(3, 'Наименование должно быть не менее 3 символов')
+    ])
     name: string = '';
 
-    @From(Strategy.API_RESPONSE, 'attributes.description')
+    @From(Strategy.API_RESPONSE, 'description')
     @To(Strategy.API_REQUEST, 'description')
     description: string | null = null;
+
+    @From(Strategy.API_RESPONSE, 'coefficient')
+    @To(Strategy.API_REQUEST, 'coefficient')
+    @Validate([
+        ValidationRules.required('Коэффициент обязателен для заполнения'),
+        ValidationRules.min(0, 'Коэффициент должен быть больше 0')
+    ])
+    coefficient: number = 1;
 
     static collection = MaterialUnitCollection;
     static api = new MaterialUnitApi();
 
     get display_name(): string {
         return `${this.name} (${this.label})`;
-    }
-
-    static async fetch(id?: number): Promise<MaterialUnitCollection> {
-        return await this.api.fetchAll(id);
-    }
-
-    async update(): Promise<IMaterialUnit> {
-        return await MaterialUnit.api.update(this);
-    }
-
-    async store(): Promise<IMaterialUnit> {
-        // Метод store пока не реализован в API
-        throw new Error('Method store not implemented yet');
-    }
-
-    async destroy(): Promise<string> {
-        // Метод destroy пока не реализован в API
-        throw new Error('Method destroy not implemented yet');
     }
 }
 

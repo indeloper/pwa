@@ -11,6 +11,11 @@ import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
 import DialogService from 'primevue/dialogservice';
 import './style.css'
+import Chart from 'chart.js/auto';
+import zoomPlugin from 'chartjs-plugin-zoom';
+
+// Регистрация плагина зума/пана глобально для всех графиков
+Chart.register(zoomPlugin);
 
 const app = createApp(App)
 const pinia = createPinia()

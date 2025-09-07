@@ -13,7 +13,7 @@ import {
     isEmpty as lodashIsEmpty
 } from 'lodash';
 
-export default class BaseCollection<T extends IModel> {
+export default class BaseCollection<T extends IModel<T>> {
     protected items: T[] = [];
 
     constructor(items: T[] = []) {
@@ -103,7 +103,31 @@ export default class BaseCollection<T extends IModel> {
      * Удалить элемент по id
      */
     removeById(id: number): T | undefined {
-        return this.items.splice(this.items.findIndex(item => item.id === id), 1)[0];
+        const index = this.items.findIndex(item => (item as any).id === id);
+        if (index === -1) return undefined;
+        return this.items.splice(index, 1)[0];
+    }
+
+    /**
+     * Заменить элемент по uuid
+     */
+    replaceByUuid(uuid: string, next: T): this {
+        const index = this.items.findIndex(item => item.uuid === uuid);
+        if (index !== -1) {
+            this.items.splice(index, 1, next);
+        }
+        return this;
+    }
+
+    /**
+     * Заменить элемент по id
+     */
+    replaceById(id: number, next: T): this {
+        const index = this.items.findIndex(item => (item as any).id === id);
+        if (index !== -1) {
+            this.items.splice(index, 1, next);
+        }
+        return this;
     }
 
     /**
@@ -146,7 +170,7 @@ export default class BaseCollection<T extends IModel> {
     /**
      * Преобразовать элементы коллекции
      */
-    map<U extends BaseModel>(callback: (item: T, index: number) => U): BaseCollection<U> {
+    map<U extends IModel<U>>(callback: (item: T, index: number) => U): BaseCollection<U> {
         return new BaseCollection(map(this.items, callback));
     }
 

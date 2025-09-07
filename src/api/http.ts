@@ -30,31 +30,12 @@ export const httpDelete = async <T = any>(url: string, config?: any): Promise<T>
   return response.data;
 };
 
-// Методы с авторизацией
-export const httpGetAuth = async <T = any>(url: string, config?: any): Promise<T> => {
-  const response = await api.get<T>(url, config);
-  return response.data;
-};
-
-export const httpPostAuth = async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
-  const response = await api.post<T>(url, data, config);
-  return response.data;
-};
-
-export const httpPutAuth = async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
-  const response = await api.put<T>(url, data, config);
-  return response.data;
-};
-
-export const httpPatchAuth = async <T = any>(url: string, data?: any, config?: any): Promise<T> => {
-  const response = await api.patch<T>(url, data, config);
-  return response.data;
-};
-
-export const httpDeleteAuth = async <T = any>(url: string, config?: any): Promise<T> => {
-  const response = await api.delete<T>(url, config);
-  return response.data;
-};
+// Методы с авторизацией (алиасы для обычных методов, так как авторизация через cookies работает автоматически)
+export const httpGetAuth = httpGet;
+export const httpPostAuth = httpPost;
+export const httpPutAuth = httpPut;
+export const httpPatchAuth = httpPatch;
+export const httpDeleteAuth = httpDelete;
 
 // Экспортируем все методы в одном объекте
 export const http = {
@@ -63,12 +44,12 @@ export const http = {
   put: httpPut,
   patch: httpPatch,
   delete: httpDelete,
-  // Методы с авторизацией
-  getAuth: httpGetAuth,
-  postAuth: httpPostAuth,
-  putAuth: httpPutAuth,
-  patchAuth: httpPatchAuth,
-  deleteAuth: httpDeleteAuth,
+  // Методы с авторизацией (алиасы для cookie-based auth)
+  getAuth: httpGet,
+  postAuth: httpPost,
+  putAuth: httpPut,
+  patchAuth: httpPatch,
+  deleteAuth: httpDelete,
 };
 
 export default http;

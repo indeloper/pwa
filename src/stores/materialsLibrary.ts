@@ -15,6 +15,7 @@ import MaterialPropertyCollection from '../models/collections/MaterialPropertyCo
 import MaterialTypeCollection from '../models/collections/MaterialTypeCollection';
 import MaterialBrandCollection from '../models/collections/MaterialBrandCollection';
 import MaterialStandardCollection from '../models/collections/MaterialStandardCollection';
+import MaterialUnitService from '@/services/MaterialUnitService';
 
 export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
     const unitsLoading = ref(false);
@@ -36,8 +37,7 @@ export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
     const loadUnits = async (): Promise<void> => {
         try {
             unitsLoading.value = true;
-            const response = await MaterialUnit.fetch();
-            units.value = response;
+            units.value = await MaterialUnitService.fetchAll();
         } catch (error) {
             console.error('Error loading units:', error);
             throw error;
@@ -49,7 +49,7 @@ export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
     const updateUnit = async (unit: MaterialUnit): Promise<void> => {     
         unitsLoading.value = true;
         try {
-            await unit.update();            
+            await MaterialUnitService.update(unit);
         } catch (error) {
             console.error('Error saving unit:', error);
             throw error;
@@ -61,8 +61,7 @@ export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
     const storeUnit = async (unit: MaterialUnit): Promise<void> => {
         unitsLoading.value = true;
         try {
-            const newUnit = await unit.store();
-            units.value.push(newUnit);
+            await MaterialUnitService.store(unit);
         } catch (error) { 
             console.error('Error storing unit:', error);
             throw error;
@@ -74,8 +73,7 @@ export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
     const deleteUnit = async (unit: MaterialUnit): Promise<void> => {
         unitsLoading.value = true;
         try {
-            const deletedUnitUuid = await unit.destroy();
-            units.value.removeByUuid(deletedUnitUuid);
+            await MaterialUnitService.destroy(unit);
         } catch (error) {
             console.error('Error deleting unit:', error);
             throw error;

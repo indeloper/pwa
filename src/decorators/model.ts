@@ -12,9 +12,9 @@ export interface IModelStatic<T extends IModel<T>> {
 export interface IModel<T extends IModel<T>> {
     uuid: string;
     // _uuid?: string; // внутреннее поле для хранения UUID
-    store(): Promise<T>;
-    update(): Promise<T>;
-    destroy(): Promise<string>;
+    // store(): Promise<T>;
+    // update(): Promise<T>;
+    // destroy(): Promise<string>;
     refresh(other: Partial<T>): T;
 }
 

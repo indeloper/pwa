@@ -7,6 +7,7 @@ import MegaMenu from 'primevue/megamenu';
 import { useRouter } from 'vue-router';
 import ScrollTop from 'primevue/scrolltop';
 import { throttle } from 'lodash';
+import MaterialStandardApi from '@/api/MaterialStandardApi';
 
 const authStore = useAuthStore();
 
@@ -63,6 +64,24 @@ onUnmounted(() => {
 
 const megaMenuItems = ref([
     {
+        label: 'Материалы',
+        root: true,
+        items: [
+            [
+                {
+                    label: 'Материалы',
+                    icon: 'pi pi-file-pdf',
+                }
+            ],
+            [
+                {
+                    label: 'Материалы',
+                    icon: 'pi pi-file-pdf',
+                }
+            ]
+        ]
+    },
+    {
         label: 'Справочники',
         root: true,
         items: [
@@ -114,9 +133,9 @@ const megaMenuItems = ref([
 </script>
 
 <template>
-    <div class="flex flex-col min-h-screen bg-gray-100 h-screen grid grid-rows-[auto_1fr_auto]">
+    <div class="flex flex-col min-h-screen bg-gray-100 h-screen grid grid-rows-[auto_1fr_auto] max-w-[100vw]">
         <header :class="[
-            'text-gray-800 md:px-2 md-pt-2 flex sticky top-0 z-50 transition-all duration-300',
+            'text-gray-800 md:px-2 md-pt-2 flex sticky top-0 z-50 transition-all duration-300 w-full',
             isHeaderVisible ? 'translate-y-0' : '-translate-y-full',
         ]">
 
@@ -125,8 +144,11 @@ const megaMenuItems = ref([
                 <template #start>
                     <div class="flex items-center gap-2 hidden md:block hover:scale-105 transition-all duration-300 cursor-pointer"
                         @click="router.push('/')">
-                        <i class="pi pi-book text-primary text-xl"></i>
                         <span class="font-semibold text-lg">СК ГОРОД</span>
+                    </div>
+                    <div class="ml-8 flex items-center gap-2 hidden md:block hover:scale-105 transition-all duration-300 cursor-pointer"
+                        @click="router.push('/test')">
+                        <span class="font-semibold text-lg">TEST</span>
                     </div>
                 </template>
                 <template #item="{ item }">
@@ -163,7 +185,7 @@ const megaMenuItems = ref([
 
         </header>
 
-        <main class="flex-1 px-2 md:px-8 py-2 h-full flex flex-col">
+        <main class="flex-1 px-2 md:px-8 py-2 h-full flex flex-col max-w-[99vw]">
             <div class="bg-white rounded-lg p-4 shadow flex-1 flex flex-col h-[80vh]">
                 <slot />
             </div>

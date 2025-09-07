@@ -1,6 +1,5 @@
 import type { IModel, ITransformable } from "@/decorators";
 import type { IValidatable } from "@/decorators/validation";
-import type BaseCollection from "./BaseCollection";
 import { v4 as uuidv4 } from 'uuid';
 
 /**
@@ -15,10 +14,6 @@ export default abstract class BaseModel<T extends IModel<T>> implements IModel<T
     constructor() {
         this.uuid = uuidv4();
     }
-
-    abstract store(): Promise<T>;
-    abstract update(): Promise<T>;
-    abstract destroy(): Promise<string>;
 
     /** @ts-ignore */
     refresh(other: Partial<T>): T {
@@ -48,5 +43,35 @@ export default abstract class BaseModel<T extends IModel<T>> implements IModel<T
     /** @ts-ignore */
     validate(): boolean {
         return true; // декоратор перезапишет
+    }
+
+    /** @ts-ignore */
+    isRequired(property: string): boolean {
+        return false; // декоратор перезапишет
+    }
+
+    /** @ts-ignore */
+    isUnsigned(property: string): boolean {
+        return false; // декоратор перезапишет
+    }
+
+    /** @ts-ignore */
+    getMin(property: string): number | undefined {
+        return undefined; // декоратор перезапишет
+    }
+
+    /** @ts-ignore */
+    getMax(property: string): number | undefined {
+        return undefined; // декоратор перезапишет
+    }
+
+    /** @ts-ignore */
+    getMinLength(property: string): number | undefined {
+        return undefined; // декоратор перезапишет
+    }
+
+    /** @ts-ignore */
+    getMaxLength(property: string): number | undefined {
+        return undefined; // декоратор перезапишет
     }
 }

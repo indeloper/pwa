@@ -13,3 +13,7 @@
 body {
   font-family: 'Montserrat', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
 }
+
+label {
+  @apply text-sm text-gray-700 font-medium;
+}

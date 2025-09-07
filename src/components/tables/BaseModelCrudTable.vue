@@ -1,13 +1,16 @@
 <script setup lang="ts" generic="T extends IModel">
 import { onBeforeMount, ref } from 'vue';
 import type { IModel } from '@/decorators';
-import type { FilterSettings, BaseModelCrudTableColumn, BaseModelCrudTableConfig } from '@/types/table';
+import type { FilterSettings, BaseModelCrudTableConfig } from '@/types/table';
+import { Plus } from '@vicons/fa'
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import { FilterMatchMode } from '@primevue/core/api';
 import InputNumber from 'primevue/inputnumber';
+import ProgressSpinner from 'primevue/progressspinner';
+import DrawerMenu from '@/components/ui/DrawerMenu.vue';
 
 const props = defineProps<{
     models: T[];
@@ -16,6 +19,7 @@ const props = defineProps<{
 }>();
 
 const filters = ref<Record<string, FilterSettings>>({});
+const selectedModels = ref<T[]>([]);
 
 const handleStartAdd = () => {
     props.config.startAdd?.();
@@ -27,6 +31,13 @@ const handleStartEdit = (model: T) => {
 
 const handleStartDelete = (model: T) => {
     props.config.startDelete?.(model);
+}
+
+const menuVisible = ref(false);
+
+
+const handleMassDelete = () => {
+    props.config.startMassDelete?.(selectedModels.value);
 }
 
 const initFilters = () => {
@@ -43,19 +54,36 @@ onBeforeMount(() => {
 </script>
 
 <template>
-    <DataTable v-model:filters="filters" filterDisplay="row" :value="models" :loading="modelsLoading" row-hover
-        scrollable size="small" dataKey="uuid" scrollHeight="flex" :virtualScrollerOptions="{ itemSize: 46 }"
-        removable-sort>
+    <div v-if="modelsLoading" class="flex justify-center items-center h-full">
+        <div class="flex flex-col items-center gap-2">
+            <ProgressSpinner />
+            <span>Загрузка...</span>
+        </div>
+    </div>
+    <DataTable v-else v-model:filters="filters" v-model:selection="selectedModels" :selection-mode="config.selectable"
+        filterDisplay="row" :value="models" row-hover scrollable size="small" dataKey="uuid" scrollHeight="flex"
+        :virtualScrollerOptions="{ itemSize: 46 }" removable-sort responsive>
         <template #header>
             <div class="flex justify-between items-center">
                 <h1 class="text-2xl font-bold">{{ config.title }}</h1>
                 <div class="flex gap-2">
-                    <Button v-if="config.startAdd" label="Добавить" @click="handleStartAdd" />
+                    <template v-if="config.massDelete && selectedModels.length > 0">
+                        <Button icon="pi pi-trash" label="Удалить выбранные" @click="handleMassDelete" />
+                    </template>
+                    <template v-if="config.startAdd">
+                        <Button @click="handleStartAdd" size="small">
+                            <Plus class="w-4 h-4" />
+                            <p class="hidden md:block">Добавить</p>
+                        </Button>
+                    </template>
                 </div>
             </div>
         </template>
+
+        <Column v-if="config.selectable" selectionMode="multiple" class="!w-[3%]"></Column>
+
         <Column v-for="column in config.columns" :key="column.field" :field="column.field" :header="column.header"
-            :class="column.class" :sortable="column.sortable ?? true">
+            :class="column.class" :sortable="column.sortable ?? true" :frozen="column.frozen ?? false">
             <template v-if="column.filter" #filter="{ filterModel, filterCallback }">
                 <InputNumber v-if="column.type === 'number'" v-model="filterModel.value" size="small" fluid
                     type="number" @input="filterCallback()" placeholder="Поиск" />
@@ -74,4 +102,6 @@ onBeforeMount(() => {
             </template>
         </Column>
     </DataTable>
+
+    <DrawerMenu v-model="menuVisible" />
 </template>

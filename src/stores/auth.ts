@@ -37,9 +37,8 @@ export const useAuthStore = defineStore('auth', () => {
 
   const initializeAuth = async (): Promise<void> => {
     try {
-      // Инициализируем CSRF cookie (на случай если страница перезагружена и cookie отсутствует)
       const authApi = useAuthApi()
-      await authApi.get(new URL('/api/v2/sanctum/csrf-cookie', import.meta.env.VITE_API_BASE_URL).toString())
+      await authApi.get('/sanctum/csrf-cookie')
 
       const { getUser: fetchUser } = useAuth()
       const userData = await fetchUser()
