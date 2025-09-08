@@ -7,6 +7,7 @@ import ConfirmDialog from 'primevue/confirmdialog';
 import DynamicDialog from 'primevue/dynamicdialog';
 import Toast from 'primevue/toast';
 import Loader from './components/ui/Loader.vue';
+import { refreshLibraries } from './workers/tasks/refreshLibraries';
 // Демонстрация: запуск тестового прогресс-лоадера только в dev
 if (import.meta.env.DEV) {
   import('@/workers/tasks/demoLoaderProgress').then(({ enqueueDemoLoaderProgressTask }) => {
@@ -17,6 +18,7 @@ const authStore = useAuthStore();
 const { isAuthenticated } = storeToRefs(authStore);
 
 onMounted(() => {
+  refreshLibraries();
   authStore.initializeAuth();
 });
 </script>

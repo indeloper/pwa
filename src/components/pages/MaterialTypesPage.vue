@@ -1,49 +1,99 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import { useMaterialsLibraryStore } from '../../stores/materialsLibrary';
 import { storeToRefs } from 'pinia';
+import MaterialType from '../../models/MaterialType';
+import { ref } from 'vue';
+import { useToastMessage } from '@/composables/useToastMessage';
+import MaterialTypeForm from '@/components/forms/MaterialTypeForm.vue';
+import Dialog from 'primevue/dialog';
+import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
+import { useMaterialTypeStore } from '@/stores/useMaterialTypeStore';
+import { useConfirmMessage } from '@/composables/useConfirmMessage';
 
-const materialsLibraryStore = useMaterialsLibraryStore();
-const { types, typesLoading } = storeToRefs(materialsLibraryStore);
+const pageLoading = ref(true);
+const isAddDialogOpen = ref(false);
+const isEditDialogOpen = ref(false);
+const editableType = ref<MaterialType>(MaterialType.createEmpty());
 
-onMounted(async () => {
-    try {
-        await materialsLibraryStore.loadTypes();
-    } catch (error) {
-        console.error('Failed to fetch material types:', error);
-    }
+const newType = ref<MaterialType>(MaterialType.createEmpty());
+
+const { addErrorMessage, addSuccessMessage } = useToastMessage();
+const { confirmDeleteMessage } = useConfirmMessage();
+
+const materialTypeStore = useMaterialTypeStore();
+const { types, typesLoading } = storeToRefs(materialTypeStore);
+
+const handleStartAdd = () => {
+    isAddDialogOpen.value = true;
+}
+const handleStartEdit = (model: MaterialType) => {
+    console.log(model);
+
+    editableType.value = MaterialType.clone(model);
+    isEditDialogOpen.value = true;
+}
+const handleDeleteType = (model: MaterialType) => {
+    confirmDeleteMessage({
+        accept: async () => {
+            materialTypeStore.deleteType(model)
+                .then(() => {
+                    addSuccessMessage('Тип материала успешно удален');
+                })
+                .catch((error) => {
+                    addErrorMessage('Не удалось удалить тип материала');
+                    console.error(error);
+                });
+        },
+    });
+}
+const handleStoreType = (model: MaterialType) => {
+    materialTypeStore.storeType(model)
+        .then(() => {
+            isAddDialogOpen.value = false;
+            newType.value = MaterialType.createEmpty();
+            addSuccessMessage('Тип материала успешно добавлен');
+        })
+        .catch((error) => {
+            addErrorMessage('Не удалось добавить тип материала');
+            console.error(error);
+        });
+}
+const handleUpdateType = (model: MaterialType) => {
+    materialTypeStore.updateType(model)
+        .then(() => {
+            isEditDialogOpen.value = false;
+            editableType.value = MaterialType.createEmpty();
+            addSuccessMessage('Тип материала успешно обновлен');
+        })
+        .catch((error) => {
+            addErrorMessage('Не удалось обновить тип материала');
+            console.error(error);
+        });
+}
+
+onMounted(() => {
+    materialTypeStore.loadTypes()
+        .then(() => {
+            pageLoading.value = false;
+        })
+        .catch((error) => {
+            addErrorMessage('Не удалось загрузить типы материалов');
+            console.error('Error loading types:', error);
+        })
 });
 </script>
 
 <template>
-    <div>
-        <DataTable 
-            :value="types.toArray()" 
-            size="small" 
-            dataKey="id" 
-            :loading="typesLoading" 
-            row-hover
-            scrollable
-            scrollHeight="600px"
-            :virtualScrollerOptions="{ itemSize: 46 }"
-        >
-            <template #header>
-                <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold">Типы материалов</h1>
-                </div>
-            </template>
-            <Column field="name" header="Наименование" class="w-[30%]">
-            </Column>
-            <Column field="unitName" header="Единица измерения" class="w-[20%]">
-            </Column>
-            <Column field="isFixedQuantity" header="Фиксированное количество" class="w-[20%]">
-            </Column>
-            <Column field="propertiesCount" header="Количество свойств" class="w-[15%]">
-            </Column>
-            <Column field="description" header="Описание" class="w-[15%]">
-            </Column>
-        </DataTable>
-    </div>
+    <BaseResourceTable :models="types.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+        :startEdit="handleStartEdit" :startDelete="handleDeleteType" title="Типы материалов" />
+
+    <Dialog v-model:visible="isAddDialogOpen" header="Добавление типа материала" modal>
+        <MaterialTypeForm v-model:model="newType" :loading="typesLoading" @submit="handleStoreType"
+            @cancel="isAddDialogOpen = false" />
+    </Dialog>
+
+    <Dialog v-model:visible="isEditDialogOpen" header="Редактирование типа материала" modal>
+        <MaterialTypeForm v-model:model="editableType" :loading="typesLoading" @submit="handleUpdateType"
+            @cancel="isEditDialogOpen = false" />
+    </Dialog>
 </template>

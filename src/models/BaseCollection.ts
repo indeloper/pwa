@@ -28,6 +28,20 @@ export default class BaseCollection<T extends IModel<T>> {
     }
 
     /**
+     * Найти элемент по ID
+     */
+    findById(id: number): T | undefined {
+        return this.find(item => (item as any).id === id);
+    }
+
+    /**
+     * Найти элемент по UUID
+     */
+    findByUuid(uuid: string): T | undefined {
+        return this.find(item => (item as any).uuid === uuid);
+    }
+
+    /**
      * Получить количество элементов в коллекции
      */
     count(): number {

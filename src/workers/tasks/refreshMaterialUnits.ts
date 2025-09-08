@@ -1,6 +1,8 @@
 import { useLoader } from "@/composables/useLoader";
 import { useToastMessage } from "@/composables/useToastMessage";
 import BackgroundTaskManager from "@/workers/BackgroundTaskManager";
+import { useMaterialUnitStore } from "@/stores/useMaterialUnitStore";
+import MaterialUnit from "@/models/MaterialUnit";
 
 export function enqueueRefreshMaterialUnitsTask(options?: { silent?: boolean }) {
 
@@ -13,11 +15,10 @@ export function enqueueRefreshMaterialUnitsTask(options?: { silent?: boolean }) 
         run: async () => {
             try {
                 start('loader-message', { message: 'Обновление единиц измерения...' });
-                const { default: MaterialUnitService } = await import("@/services/MaterialUnitService");
-                const collection = await MaterialUnitService.fetchAll();
-                const { useMaterialsLibraryStore } = await import("@/stores/materialsLibrary");
-                const store = useMaterialsLibraryStore();
+                const collection = await MaterialUnit.fetchAll();
+                const store = useMaterialUnitStore();
                 store.units = collection;
+                store.unitsLoading = false;
                 if (!options?.silent) {
                     console.log("[BackgroundTask] Store refreshed: material units");
                 }

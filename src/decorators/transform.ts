@@ -112,8 +112,11 @@ export function Transformable() {
     return function (target: any) {
         
         // Статический метод - создает и возвращает экземпляр
+        // Важно: используем текущий конструктор (this), а не замыкание на target,
+        // чтобы корректно работать с классами, у которых конструктор подменён другим декоратором
         target.from = function(strategy: string | symbol, data: any) {
-            const instance = new target();
+            const Ctor = this as any;
+            const instance = new Ctor();
             instance.from(strategy, data);
             return instance;
         };

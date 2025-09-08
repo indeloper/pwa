@@ -9,7 +9,6 @@ export default abstract class BaseModel<T extends IModel<T>> implements IModel<T
     // Эти поля добавляются декораторами, не делаем их абстрактными
     uuid!: string; // декоратор @Model добавит геттер
     // _uuid?: string; // внутреннее поле для декоратора
-    // static collection убираем - каждая модель определит своё
 
     constructor() {
         this.uuid = uuidv4();

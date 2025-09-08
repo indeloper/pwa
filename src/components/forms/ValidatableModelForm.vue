@@ -41,12 +41,12 @@ const errors = computed(() => {
 </script>
 
 <template>
-    <div>
+    <form @submit.prevent="handleSubmit">
         <slot :model="model" :errors="errors" :touched="submitted" />
         <Divider />
         <div class="flex gap-2 justify-end">
-            <Button v-bind="DEFAULT_CANCEL_BUTTON_PROPS" @click="handleCancel" :disabled="loading" />
-            <Button v-bind="DEFAULT_SAVE_BUTTON_PROPS" @click="handleSubmit" :disabled="loading" />
+            <Button v-bind="DEFAULT_CANCEL_BUTTON_PROPS" type="button" @click="handleCancel" :disabled="loading" />
+            <Button v-bind="DEFAULT_SAVE_BUTTON_PROPS" type="submit" :disabled="loading" />
         </div>
-    </div>
+    </form>
 </template>

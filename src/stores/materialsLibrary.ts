@@ -16,6 +16,7 @@ import MaterialTypeCollection from '../models/collections/MaterialTypeCollection
 import MaterialBrandCollection from '../models/collections/MaterialBrandCollection';
 import MaterialStandardCollection from '../models/collections/MaterialStandardCollection';
 import MaterialUnitService from '@/services/MaterialUnitService';
+import MaterialTypeService from '@/services/MaterialTypeService';
 
 export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
     const unitsLoading = ref(false);
@@ -82,6 +83,43 @@ export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
         }
     };
 
+    // Material Types
+    const loadTypes = async (): Promise<void> => {
+        try {
+            typesLoading.value = true;
+            const response = await MaterialTypeService.fetchAll();
+            types.value = response;
+        } catch (error) {
+            console.error('Error loading types:', error);
+        } finally {
+            typesLoading.value = false;
+        }
+    };
+
+    const updateType = async (type: MaterialType): Promise<void> => {
+        try {
+            await updateTypeApi(type);
+        } catch (error) {
+            console.error('Error updating type:', error);
+        }
+    };
+
+    const storeType = async (type: MaterialType): Promise<void> => {
+        try {
+            await storeTypeApi(type);
+        } catch (error) {
+            console.error('Error storing type:', error);
+        }
+    };
+
+    const deleteType = async (type: MaterialType): Promise<void> => {
+        try {
+            await deleteTypeApi(type);
+        } catch (error) {
+            console.error('Error deleting type:', error);
+        }
+    };
+
     // Material Properties
     const loadProperties = async (): Promise<void> => {
         try {
@@ -116,43 +154,6 @@ export const useMaterialsLibraryStore = defineStore('materialsLibrary', () => {
             await deletePropertyApi(property);
         } catch (error) {
             console.error('Error deleting property:', error);
-        }
-    };
-
-    // Material Types
-    const loadTypes = async (): Promise<void> => {
-        try {
-            typesLoading.value = true;
-            const response = await fetchTypesApi();
-            types.value = response;
-        } catch (error) {
-            console.error('Error loading types:', error);
-        } finally {
-            typesLoading.value = false;
-        }
-    };
-
-    const updateType = async (type: MaterialType): Promise<void> => {
-        try {
-            await updateTypeApi(type);
-        } catch (error) {
-            console.error('Error updating type:', error);
-        }
-    };
-
-    const storeType = async (type: MaterialType): Promise<void> => {
-        try {
-            await storeTypeApi(type);
-        } catch (error) {
-            console.error('Error storing type:', error);
-        }
-    };
-
-    const deleteType = async (type: MaterialType): Promise<void> => {
-        try {
-            await deleteTypeApi(type);
-        } catch (error) {
-            console.error('Error deleting type:', error);
         }
     };
 

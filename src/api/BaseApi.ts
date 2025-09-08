@@ -2,6 +2,7 @@ import { useAuthApi } from "@/composables";
 import BaseCollection from "@/models/BaseCollection";
 import { httpFluent, type HttpResult } from "@/api/fluent";
 import * as etagDb from "@/api/etagDb";
+import BaseModel from "@/models/BaseModel";
 
 export type RequestParams = Record<string, any> | undefined;
 export type RequestHeaders = Record<string, string> | undefined;
@@ -21,13 +22,15 @@ export interface EventStreamHandlers<T = any> {
     params?: RequestParams;    // query-параметры к URL
 }
 
-export default abstract class BaseApi<T> {
+export default abstract class BaseApi<T extends BaseModel<T>> {
     protected api: ReturnType<typeof useAuthApi>;
     protected baseUrl: string;
+    protected model: BaseModel<T>;
 
-    constructor() {
+    constructor(model: BaseModel<T>) {
         this.api = useAuthApi();
         this.baseUrl = (import.meta.env.VITE_API_BASE_URL as string) || "http://localhost:8000/api";
+        this.model = model;
     }
 
     // По умолчанию не реализованы — переопределяйте при необходимости в наследниках

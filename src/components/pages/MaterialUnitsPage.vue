@@ -1,26 +1,22 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import Dialog from 'primevue/dialog';
-import BaseModelCrudTable from '@/components/tables/BaseModelCrudTable.vue';
-import type { BaseModelCrudTableConfig } from '@/types/table';
-import { useMaterialsLibraryStore } from '../../stores/materialsLibrary';
+import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
 import { storeToRefs } from 'pinia';
 import MaterialUnit from '../../models/MaterialUnit';
 import MaterialUnitForm from '@/components/forms/MaterialUnitForm.vue';
-import { cloneDeep } from 'lodash';
 import { useToastMessage } from '@/composables/useToastMessage';
 import { useConfirmMessage } from '@/composables/useConfirmMessage';
-import { useAuthApi } from '@/composables';
-import type BaseCollection from '@/models/BaseCollection';
 
-const pageLoading = ref(true);
+const pageLoading = ref(false);
 
 const { addSuccessMessage, addErrorMessage } = useToastMessage();
 const { confirmDeleteMessage } = useConfirmMessage();
 
-const materialsLibraryStore = useMaterialsLibraryStore();
+const materialUnitStore = MaterialUnit.resourceStore;
 
-const { units, unitsLoading } = storeToRefs(materialsLibraryStore);
+/** @ts-ignore допишу интерфейс */
+const { units, unitsLoading } = storeToRefs(materialUnitStore);
 
 const editableUnit = ref<MaterialUnit>({} as MaterialUnit);
 const newUnit = ref<MaterialUnit>(MaterialUnit.createEmpty());
@@ -28,60 +24,36 @@ const newUnit = ref<MaterialUnit>(MaterialUnit.createEmpty());
 const isAddDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
 
-const config = ref<BaseModelCrudTableConfig<MaterialUnit>>({
-    title: 'Единицы измерения',
-    startAdd: () => handleStartAdd(),
-    startEdit: (model: MaterialUnit) => handleStartEdit(model),
-    startDelete: (model: MaterialUnit) => handleDeleteUnit(model),
-    columns: [
-        { 
-            field: 'name', 
-            header: 'Наименование', 
-            class: 'w-[50%]', 
-            filter: true, 
-        },
-        { 
-            field: 'label', 
-            header: 'Короткое наименование', 
-            class: 'w-[25%]', 
-            filter: true, 
-        },
-        {
-            field: 'coefficient',
-            header: 'Коэффициент',
-            class: 'w-[25%]',
-        },
-    ]
-});
-
 const handleStartAdd = () => {
     isAddDialogOpen.value = true;
 }
 
 const handleStartEdit = (model: MaterialUnit) => {
-    editableUnit.value = cloneDeep(model);
+    editableUnit.value = MaterialUnit.clone(model);
     isEditDialogOpen.value = true;
 }
 
 const handleUpdateUnit = async (model: MaterialUnit) => {
-    materialsLibraryStore.updateUnit(model)
+    materialUnitStore.updateUnit(model)
         .then(() => {
             isEditDialogOpen.value = false;
+            editableUnit.value = MaterialUnit.createEmpty();
             addSuccessMessage('Единица измерения успешно обновлена');
         })
-        .catch((error) => {
+        .catch((error: any) => {
             addErrorMessage('Не удалось обновить единицу измерения');
             console.error(error);
         });
 }
 
 const handleStoreUnit = async (model: MaterialUnit) => {
-    await materialsLibraryStore.storeUnit(model)
+    await materialUnitStore.storeUnit(model)
         .then(() => {
             isAddDialogOpen.value = false;
+            newUnit.value = MaterialUnit.createEmpty();
             addSuccessMessage('Единица измерения успешно добавлена');
         })
-        .catch((error) => {
+        .catch((error: any) => {
             addErrorMessage('Не удалось добавить единицу измерения');
             console.error(error);
         });
@@ -90,11 +62,11 @@ const handleStoreUnit = async (model: MaterialUnit) => {
 const handleDeleteUnit = async (model: MaterialUnit) => {
     confirmDeleteMessage({
         accept: async () => {
-            materialsLibraryStore.deleteUnit(model)
+            materialUnitStore.deleteUnit(model)
                 .then(() => {
                     addSuccessMessage('Единица измерения успешно удалена');
                 })
-                .catch((error) => {
+                .catch((error: any) => {
                     addErrorMessage('Не удалось удалить единицу измерения');
                     console.error(error);
                 });
@@ -103,15 +75,20 @@ const handleDeleteUnit = async (model: MaterialUnit) => {
 }
 
 onMounted(() => {
-    materialsLibraryStore.loadUnits()
+    materialUnitStore.loadUnits()
         .then(() => {
             pageLoading.value = false;
+        })
+        .catch((error: any) => {
+            addErrorMessage('Не удалось загрузить единицы измерения');
+            console.error('Error loading units:', error);
         });
 })
 </script>
 
 <template>
-    <BaseModelCrudTable :models="units.toArray()" :models-loading="pageLoading" :config="config" />
+    <BaseResourceTable :models="units.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+        :startEdit="handleStartEdit" :startDelete="handleDeleteUnit" title="Единицы измерения" />
 
     <Dialog v-model:visible="isEditDialogOpen" header="Редактирование единицы измерения" modal>
         <MaterialUnitForm v-model:model="editableUnit" :loading="unitsLoading" @submit="handleUpdateUnit"
