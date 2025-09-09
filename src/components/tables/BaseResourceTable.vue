@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { isMobile } from '@/helpers';
-import { computed, ref, watch } from 'vue';
+import { computed, ref, watch, onMounted } from 'vue';
+
 import DataTable from 'primevue/datatable';
 import MultiSelect from 'primevue/multiselect';
 import Select from 'primevue/select';
@@ -73,6 +74,15 @@ const columns = computed<Record<string, any>>(() => {
 const filters = ref<Record<string, FilterSettings>>({});
 const globalSearchString = ref<string>('');
 
+// Флаг готовности фильтров: все колонки имеют записи в filters
+const filtersReady = computed<boolean>(() => {
+    const cols = columns.value || {};
+    const colKeys = Object.keys(cols);
+    if (colKeys.length === 0) return false;
+    if (!filters.value || !('global' in filters.value)) return false;
+    return colKeys.every(k => !!filters.value[k] && 'value' in (filters.value[k] as any));
+});
+
 // Для диалога длинного текста
 const longtextDialogVisible = ref(false);
 const longtextDialogTitle = ref('');
@@ -81,10 +91,9 @@ const longtextDialogContent = ref('');
 const initFilters = () => {
     filters.value['global'] = { value: null, matchMode: FilterMatchMode.STARTS_WITH };
 
-    Object.keys(props.models.first()?.fields).forEach((key: string) => {
-        const fieldType = props.models.first()?.fields[key].type;
-        console.log(fieldType);
-
+    const fields = props.models.first()?.fields || {};
+    Object.keys(fields).forEach((key: string) => {
+        const fieldType = fields[key]?.type;
         let matchMode = FilterMatchMode.STARTS_WITH;
 
         // Определяем matchMode в зависимости от типа поля
@@ -335,8 +344,11 @@ const handleStartDelete = (model: any) => {
 
 // Инициализация и обновление данных
 const initializeData = () => {
+    if (!props.models || !props.models.first || !props.models.first()) {
+        modelsArray.value = [];
+        return;
+    }
     initFilters();
-    console.log(columns.value);
     modelsArray.value = props.models.toArray();
 }
 
@@ -347,14 +359,29 @@ watch(columnsInitialazed, () => {
     }
 });
 
+// Переинициализируем фильтры при изменении набора колонок
+watch(() => Object.keys(columns.value), () => {
+    if (columnsInitialazed.value) {
+        initFilters();
+    }
+});
+
+// Инициализируем при монтировании, если колонки уже есть
+onMounted(() => {
+    if (columnsInitialazed.value) {
+        initializeData();
+    }
+});
+
 // Следим за изменениями в props.models
 watch(() => props.models, () => {
-    modelsArray.value = props.models.toArray();
+    // При смене страницы/маршрута models может быть временно undefined
+    modelsArray.value = props.models ? props.models.toArray() : [];
 }, { deep: true });
 </script>
 
 <template>
-    <DataTable :value="filteredModelsArray" size="small" filterDisplay="row" v-model:filters="filters" dataKey="uuid"
+    <DataTable v-if="columnsInitialazed && filtersReady" :value="filteredModelsArray" size="small" filterDisplay="row" v-model:filters="filters" dataKey="uuid"
         row-hover>
 
         <template #header>
@@ -381,70 +408,72 @@ watch(() => props.models, () => {
                 :style="column.style || ''" :class="column.class || ''" :frozen="column.frozen ?? false"
                 :filterFunction="column.type === 'multiselect' ? arrayIntersects : undefined">
                 <template #filter="{ filterModel, filterCallback }">
-                    <!-- Числовые типы -->
-                    <template v-if="column.type === 'number' || column.type === 'integer'">
-                        <InputNumber v-model="filterModel.value" size="small" fluid placeholder="Поиск по числу"
-                            @input="filterCallback()" />
-                    </template>
+                    <template v-if="filterModel">
+                        <!-- Числовые типы -->
+                        <template v-if="column.type === 'number' || column.type === 'integer'">
+                            <InputNumber v-model="filterModel.value" size="small" fluid placeholder="Поиск по числу"
+                                @input="filterCallback()" />
+                        </template>
 
-                    <!-- Десятичные числа -->
-                    <template v-else-if="column.type === 'decimal' || column.type === 'float'">
-                        <InputNumber v-model="filterModel.value" size="small" fluid :minFractionDigits="2"
-                            :maxFractionDigits="2" placeholder="Поиск по числу" @input="filterCallback()" />
-                    </template>
+                        <!-- Десятичные числа -->
+                        <template v-else-if="column.type === 'decimal' || column.type === 'float'">
+                            <InputNumber v-model="filterModel.value" size="small" fluid :minFractionDigits="2"
+                                :maxFractionDigits="2" placeholder="Поиск по числу" @input="filterCallback()" />
+                        </template>
 
-                    <!-- Логический тип -->
-                    <template v-else-if="column.type === 'boolean'">
-                        <Select v-model="filterModel.value" size="small" fluid placeholder="Все" :options="[
-                            { label: 'Все', value: null },
-                            { label: 'Да', value: true },
-                            { label: 'Нет', value: false }
-                        ]" option-label="label" option-value="value" @change="filterCallback()" />
-                    </template>
+                        <!-- Логический тип -->
+                        <template v-else-if="column.type === 'boolean'">
+                            <Select v-model="filterModel.value" size="small" fluid placeholder="Все" :options="[
+                                { label: 'Все', value: null },
+                                { label: 'Да', value: true },
+                                { label: 'Нет', value: false }
+                            ]" option-label="label" option-value="value" @change="filterCallback()" />
+                        </template>
 
-                    <!-- Дата -->
-                    <template v-else-if="column.type === 'date'">
-                        <input v-model="filterModel.value" type="date" class="p-inputtext p-inputtext-sm p-fluid"
-                            @change="filterCallback()" />
-                    </template>
+                        <!-- Дата -->
+                        <template v-else-if="column.type === 'date'">
+                            <input v-model="filterModel.value" type="date" class="p-inputtext p-inputtext-sm p-fluid"
+                                @change="filterCallback()" />
+                        </template>
 
-                    <!-- Дата и время -->
-                    <template v-else-if="column.type === 'datetime'">
-                        <input v-model="filterModel.value" type="datetime-local"
-                            class="p-inputtext p-inputtext-sm p-fluid" @change="filterCallback()" />
-                    </template>
+                        <!-- Дата и время -->
+                        <template v-else-if="column.type === 'datetime'">
+                            <input v-model="filterModel.value" type="datetime-local"
+                                class="p-inputtext p-inputtext-sm p-fluid" @change="filterCallback()" />
+                        </template>
 
-                    <!-- Select с опциями -->
-                    <template v-else-if="column.type === 'select'">
-                        <Select v-model="filterModel.value" size="small" fluid placeholder="Все" :options="[
-                            { label: 'Все', value: null },
-                            ...getFilterOptions(name)
-                        ]" option-label="label" option-value="value" @change="filterCallback()" />
-                    </template>
+                        <!-- Select с опциями -->
+                        <template v-else-if="column.type === 'select'">
+                            <Select v-model="filterModel.value" size="small" fluid placeholder="Все" :options="[
+                                { label: 'Все', value: null },
+                                ...getFilterOptions(name)
+                            ]" option-label="label" option-value="value" @change="filterCallback()" />
+                        </template>
 
-                    <!-- MultiSelect с опциями -->
-                    <template v-else-if="column.type === 'multiselect'">
-                        <MultiSelect v-model="filterModel.value" size="small" fluid placeholder="Все"
-                            :options="getFilterOptions(name)" option-label="label" option-value="value"
-                            @change="filterCallback()" />
-                    </template>
+                        <!-- MultiSelect с опциями -->
+                        <template v-else-if="column.type === 'multiselect'">
+                            <MultiSelect v-model="filterModel.value" size="small" fluid placeholder="Все"
+                                :options="getFilterOptions(name)" option-label="label" option-value="value"
+                                @change="filterCallback()" />
+                        </template>
 
-                    <!-- Текстовые поля -->
-                    <template v-else-if="column.type === 'longtext' || column.type === 'textarea'">
-                        <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
-                            @input="filterCallback()" />
-                    </template>
+                        <!-- Текстовые поля -->
+                        <template v-else-if="column.type === 'longtext' || column.type === 'textarea'">
+                            <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
+                                @input="filterCallback()" />
+                        </template>
 
-                    <!-- Обычный текст -->
-                    <template v-else-if="column.type === 'text' || column.type === 'string'">
-                        <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
-                            @input="filterCallback()" />
-                    </template>
+                        <!-- Обычный текст -->
+                        <template v-else-if="column.type === 'text' || column.type === 'string'">
+                            <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
+                                @input="filterCallback()" />
+                        </template>
 
-                    <!-- По умолчанию -->
-                    <template v-else>
-                        <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
-                            @input="filterCallback()" />
+                        <!-- По умолчанию -->
+                        <template v-else>
+                            <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
+                                @input="filterCallback()" />
+                        </template>
                     </template>
                 </template>
                 <template #body="{ data }">
