@@ -354,8 +354,8 @@ watch(() => props.models, () => {
 </script>
 
 <template>
-{{  filters  }}
-    <DataTable :value="filteredModelsArray" size="small" filterDisplay="row" v-model:filters="filters" dataKey="uuid" row-hover>
+    <DataTable :value="filteredModelsArray" size="small" filterDisplay="row" v-model:filters="filters" dataKey="uuid"
+        row-hover>
 
         <template #header>
             <div class="flex justify-between items-center">
@@ -454,8 +454,12 @@ watch(() => props.models, () => {
                             icon="pi pi-eye" />
                     </template>
                     <template v-else>
-                        {{  data[name]  }}
-                        {{ getFieldDisplayValue(data, name, column) }}
+                        <template v-if="Array.isArray(getFieldDisplayValue(data, name, column))">
+                            {{ getFieldDisplayValue(data, name, column).join(', ') }}
+                        </template>
+                        <template v-else>
+                            {{ getFieldDisplayValue(data, name, column) }}
+                        </template>
                     </template>
                 </template>
             </Column>

@@ -90,7 +90,7 @@ class MaterialBrand {
     @From(Strategy.API_RESPONSE, 'nomenclature_number')
     @To(Strategy.API_REQUEST, 'nomenclature_number')
     @Field({
-        label: 'Номенклатурный номер',
+        label: 'Номенклатура',
         type: 'text',
         placeholder: 'Укажите номенклатурный номер',
     })
@@ -111,7 +111,7 @@ class MaterialBrand {
     @From(Strategy.API_RESPONSE, 'alternate_brands')
     @To(Strategy.API_REQUEST, 'alternate_brands')
     @Field({
-        label: 'Альтернативные марки',
+        label: 'Альтернативы',
         type: 'multiselect',
         placeholder: 'Укажите альтернативные марки',
         description: 'Фильтрация по типу материала в работе',
