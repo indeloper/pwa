@@ -29,9 +29,6 @@ const modelsArray = ref<any[]>([]);
 const selectedModels = ref<any[]>([]);
 
 const filteredModelsArray = computed<any[]>(() => {
-
-    return modelsArray.value;
-
     if (!globalSearchString.value || globalSearchString.value.trim() === '') {
         return modelsArray.value;
     }
@@ -136,14 +133,8 @@ const getFilterOptions = (fieldName: string) => {
     }
 
     // Если опций в метаданных нет, генерируем из данных
-
-    // columns.value[fieldName].options().map((option: any) => option.label);
-
-
-    // const values = _.uniq(props.models.toArray().map((model: any) => model[fieldName]))
-    //     .filter(value => value !== null && value !== undefined && value !== '');
-
-    const values = columns.value[fieldName].options().map((option: any) => option.label);
+    const values = _.uniq(props.models.toArray().map((model: any) => model[fieldName]))
+        .filter(value => value !== null && value !== undefined && value !== '');
 
     return values.map(value => ({
         label: value?.toString() || '',
@@ -237,7 +228,7 @@ const getFieldValueForSearch = (data: any, fieldName: string): string => {
 const getFieldDisplayValue = (data: any, fieldName: string, column: any): string => {
     const value = data[fieldName];
 
-    if (value === null || value === undefined) return '';
+    if (value === null || value === undefined) return '-';
 
     // Сначала пробуем использовать column.displayValue если он есть
     if (column.displayValue && typeof column.displayValue === 'function') {
@@ -317,8 +308,8 @@ watch(() => props.models, () => {
 </script>
 
 <template>
-{{  filters  }}
-    <DataTable :value="filteredModelsArray" size="small" filterDisplay="row" v-model:filters="filters" dataKey="uuid" row-hover>
+
+    <DataTable :value="filteredModelsArray" size="small" filterDisplay="row" v-model:filters="filters" dataKey="uuid">
 
         <template #header>
             <div class="flex justify-between items-center">
@@ -386,7 +377,6 @@ watch(() => props.models, () => {
 
                     <!-- MultiSelect с опциями -->
                     <template v-else-if="column.type === 'multiselect'">
-                        {{ getFilterOptions(name) }}
                         <MultiSelect v-model="filterModel.value" size="small" fluid placeholder="Все"
                             :options="getFilterOptions(name)" option-label="label" option-value="value"
                             @change="filterCallback()" />
@@ -413,11 +403,9 @@ watch(() => props.models, () => {
                 <template #body="{ data }">
                     <!-- Используем единую функцию для отображения -->
                     <template v-if="column.type === 'longtext' && data[name]">
-                        <Button size="small" text @click="showLongtextDialog(column.label, data[name])"
-                            icon="pi pi-eye" />
+                        <Button size="small" text @click="showLongtextDialog(column.label, data[name])" icon="pi pi-eye" />
                     </template>
                     <template v-else>
-                        {{  data[name]  }}
                         {{ getFieldDisplayValue(data, name, column) }}
                     </template>
                 </template>
@@ -457,8 +445,7 @@ watch(() => props.models, () => {
                                 <div class="flex flex-col last:border-b-0 border-b border-gray-200 pb-2 px-2">
                                     <p class="font-medium text-gray-500 text-sm">{{ column.label }}</p>
                                     <template v-if="column.type === 'longtext' && data[name]">
-                                        <Button size="small" text @click="showLongtextDialog(column.label, data[name])"
-                                            icon="pi pi-eye" />
+                                        <Button size="small" text @click="showLongtextDialog(column.label, data[name])" icon="pi pi-eye" />
                                     </template>
                                     <template v-else>
                                         <p class="font-bold">{{ getFieldDisplayValue(data, name, column) }}</p>

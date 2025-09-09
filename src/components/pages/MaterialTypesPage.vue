@@ -84,7 +84,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <BaseResourceTable :models="types.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+    <BaseResourceTable :models="types" :models-loading="pageLoading" :startAdd="handleStartAdd"
         :startEdit="handleStartEdit" :startDelete="handleDeleteType" title="Типы материалов" />
 
     <Dialog v-model:visible="isAddDialogOpen" header="Добавление типа материала" modal>

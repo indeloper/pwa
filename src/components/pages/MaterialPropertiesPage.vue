@@ -84,7 +84,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <BaseResourceTable :models="properties.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+    <BaseResourceTable :models="properties" :models-loading="pageLoading" :startAdd="handleStartAdd"
         :startEdit="handleStartEdit" :startDelete="handleDeleteType" title="Свойства материалов" />
 
     <Dialog v-model:visible="isAddDialogOpen" header="Добавление свойства материала" modal>

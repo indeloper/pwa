@@ -7,6 +7,7 @@ import MaterialPropertiesPage from '../components/pages/MaterialPropertiesPage.v
 import MaterialBrandsPage from '../components/pages/MaterialBrandsPage.vue'
 import MaterialStandardsPage from '../components/pages/MaterialStandardsPage.vue'
 import TestPage from '@/components/pages/TestPage.vue'
+import WarehousesPage from '@/components/pages/WarehousesPage.vue'
 
 const routes = [
   {
@@ -72,7 +73,15 @@ const routes = [
     meta: {
       requiresAuth: true
     }
-  }
+  },
+  {
+    path: '/library/materials/warehouses',
+    name: 'library-materials-warehouses',
+    component: WarehousesPage,
+    meta: {
+      requiresAuth: true
+    }
+  } 
 ]
 
 const router = createRouter({

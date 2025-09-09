@@ -5,6 +5,7 @@ import { ref } from 'vue';
 import { useToastMessage } from '@/composables/useToastMessage';
 import Dialog from 'primevue/dialog';
 import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
+import BaseResourceTableNew from '@/components/tables/BaseResourceTableNew.vue';
 import { useConfirmMessage } from '@/composables/useConfirmMessage';
 import MaterialBrand from '@/models/MaterialBrand';
 import MaterialBrandForm from '@/components/forms/MaterialBrandForm.vue';
@@ -84,7 +85,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <BaseResourceTable :models="brands.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+    <BaseResourceTable :models="brands" :modelsLoading="brandsLoading" :startAdd="handleStartAdd"
         :startEdit="handleStartEdit" :startDelete="handleDeleteType" title="Марки материалов" />
 
     <Dialog v-model:visible="isAddDialogOpen" header="Добавление типа материала" modal>

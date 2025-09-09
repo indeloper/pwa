@@ -13,7 +13,6 @@ const api: AxiosInstance = axios.create({
 
 api.interceptors.request.use(
   (config: InternalAxiosRequestConfig) => {
-    console.log('🔍 Request:', config.method?.toUpperCase(), config.url);
     
     // Автоматически добавляем CSRF токен из cookie в заголовок
     if (config.method !== 'get') {
@@ -26,7 +25,6 @@ api.interceptors.request.use(
       }
     }
     
-    console.log('🍪 Request Headers:', config.headers);
     return config;
   },
   (error) => {
@@ -49,7 +47,6 @@ function getCsrfTokenFromCookie(): string | null {
 
 api.interceptors.response.use(
   (response: AxiosResponse) => {
-    console.log('✅ Response:', response.config.method?.toUpperCase(), response.config.url, response.status);
     return response;
   },
   async (error) => {

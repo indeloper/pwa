@@ -19,8 +19,9 @@ const handleLogout = () => {
 
 const avatarMenu = ref(null);
 
-const toggleAvatarMenu = (event) => {
-    avatarMenu.value.toggle(event);
+const toggleAvatarMenu = (event: Event) => {
+    /** @ts-ignore */
+    avatarMenu.value?.toggle(event);
 };
 
 const avatarMenuItems = ref([
@@ -69,15 +70,21 @@ const megaMenuItems = ref([
         items: [
             [
                 {
-                    label: 'Материалы',
-                    icon: 'pi pi-file-pdf',
+                    items: [
+                        {
+                            label: 'Склады',
+                            icon: 'pi pi-warehouse',
+                            subtext: 'Склады',
+                            command: () => router.push({ name: 'library-materials-warehouses' })
+                        }
+                    ]
                 }
             ],
             [
-                {
-                    label: 'Материалы',
-                    icon: 'pi pi-file-pdf',
-                }
+            {
+                label: 'Материалы',
+                icon: 'pi pi-file-pdf',
+            }
             ]
         ]
     },
@@ -120,7 +127,8 @@ const megaMenuItems = ref([
                         }
                     ]
                 }
-            ]
+            ],
+
         ]
     }
 ])

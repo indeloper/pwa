@@ -66,9 +66,7 @@ export function useAuth() {
     }
 
     const getUser = async (): Promise<User> => {
-        console.log('👤 Getting user info...');
         const response = await authApi.get('/me');
-        console.log('👤 User response:', response);
         
         // Проверяем, есть ли пользователь в ответе
         if (!response || !response.id) {
@@ -77,7 +75,6 @@ export function useAuth() {
         }
         
         const user = UserAdapter.adapt(response);
-        console.log('✅ User adapted:', user);
         return user;
     }
 

@@ -87,7 +87,7 @@ onMounted(() => {
 </script>
 
 <template>
-    <BaseResourceTable :models="units.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+    <BaseResourceTable :models="units" :models-loading="pageLoading" :startAdd="handleStartAdd"
         :startEdit="handleStartEdit" :startDelete="handleDeleteUnit" title="Единицы измерения" />
 
     <Dialog v-model:visible="isEditDialogOpen" header="Редактирование единицы измерения" modal>

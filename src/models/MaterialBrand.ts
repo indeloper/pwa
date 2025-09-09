@@ -59,10 +59,12 @@ class MaterialBrand {
         type: 'select',
         placeholder: 'Укажите тип материала',
         required: true,
-        options: () => MaterialType.resourceStore.types.toArray().map((materialType: MaterialType) => ({
-            label: materialType.name,
-            value: materialType.id,
-        })),
+        options: function() {
+            return MaterialType.resourceStore.types.toArray().map((materialType: MaterialType) => ({
+                label: materialType.name,
+                value: materialType.id,
+            }));
+        },
         displayValue: (value: number) => MaterialType.resourceStore.types.findById(value)?.name || '',
     })
     material_type_id: number = 0;
@@ -94,10 +96,16 @@ class MaterialBrand {
     })
     nomenclature_number: string = '';
 
-    //TODO добавить фильтрацию по типу материала и исключение текущего материала
-
-    alternate_brands_options = (model: MaterialBrand) => {
-
+    // Метод для получения опций альтернативных брендов с фильтрацией
+    getAlternateBrandsOptions(): Array<{label: string, value: number}> {
+        return MaterialBrand.resourceStore.brands
+            .filter((brand: MaterialBrand) => brand.material_type_id === this.material_type_id)
+            .filter((brand: MaterialBrand) => brand.id !== this.id)
+            .toArray()
+            .map((brand: MaterialBrand) => ({
+                label: brand.name,
+                value: brand.id!,
+            }));
     }
 
     @From(Strategy.API_RESPONSE, 'alternate_brands')
@@ -107,16 +115,12 @@ class MaterialBrand {
         type: 'multiselect',
         placeholder: 'Укажите альтернативные марки',
         description: 'Фильтрация по типу материала в работе',
-        options: (model: MaterialBrand) => {
-            return MaterialBrand.resourceStore.brands
-                .filter((brand: MaterialBrand) => brand.material_type_id === model.material_type_id)
-                .filter((brand: MaterialBrand) => brand.id !== model.id)
-                .toArray().map((brand: MaterialBrand) => ({
-                    label: brand.name,
-                    value: brand.id,
-                }))
-        },
-        displayValue: (value: number) => value ? MaterialBrand.resourceStore.brands.whereIds(value)?.toArray().map((brand: MaterialBrand) => brand.name).join(', ') : '',
+        options: () => {return MaterialBrand.resourceStore.brands.toArray().map((brand: MaterialBrand) => ({
+            label: brand.name,
+            value: brand.id!,
+        }))} ,
+        displayValue: (value: number[]) => value && value.length > 0 ? MaterialBrand.resourceStore.brands.whereIds(value)?.toArray().map((brand: MaterialBrand) => brand.name) : '',
+        filterValue: (value: number[]) => value || [], // Для правильной фильтрации массивов
     })
     alternate_brands: number[] = [];
 
