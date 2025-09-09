@@ -17,6 +17,7 @@ dev-dist
 .vscode/*
 !.vscode/extensions.json
 .cursor
+.env
 .idea
 .DS_Store
 *.suo

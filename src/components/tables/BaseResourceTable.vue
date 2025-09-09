@@ -106,7 +106,7 @@ const initFilters = () => {
                 matchMode = FilterMatchMode.EQUALS;
                 break;
             case 'multiselect':
-                matchMode = FilterMatchMode.IN;
+                matchMode = FilterMatchMode.CUSTOM;
                 break;
             case 'longtext':
             case 'textarea':
@@ -129,26 +129,63 @@ const getFilterOptions = (fieldName: string) => {
 
     // Сначала пытаемся получить опции из метаданных модели
     if (typeof model.getFieldOption === 'function') {
-        const options = model.getFieldOption(fieldName, 'options');
-        if (options && Array.isArray(options)) {
-            return options;
+        const metaOptions = model.getFieldOption(fieldName, 'options');
+        if (Array.isArray(metaOptions)) {
+            return metaOptions.map((opt: any) => {
+                const isPrimitive = opt === null || ['string', 'number', 'boolean'].includes(typeof opt);
+                const value = isPrimitive ? opt : (opt.value ?? opt.id ?? opt.key ?? opt);
+                const label = isPrimitive ? String(opt ?? '') : (opt.label ?? String(value ?? ''));
+                return { label: String(label ?? ''), value };
+            });
         }
     }
 
-    // Если опций в метаданных нет, генерируем из данных
+    // Если у колонки определён метод options(), используем его
+    const col = columns.value[fieldName];
+    if (col && typeof col.options === 'function') {
+        const opts = col.options();
+        if (Array.isArray(opts)) {
+            return opts.map((opt: any) => {
+                const isPrimitive = opt === null || ['string', 'number', 'boolean'].includes(typeof opt);
+                const value = isPrimitive ? opt : (opt.value ?? opt.id ?? opt.key ?? opt);
+                const label = isPrimitive ? String(opt ?? '') : (opt.label ?? String(value ?? ''));
+                return { label: String(label ?? ''), value };
+            });
+        }
+    }
 
-    // columns.value[fieldName].options().map((option: any) => option.label);
+    // Итоговый fallback: собрать уникальные значения из данных
+    const values = _.uniq(
+        props.models.toArray()
+            .map((m: any) => m[fieldName])
+            .flat()
+    ).filter((v: any) => v !== null && v !== undefined && v !== '');
 
-
-    // const values = _.uniq(props.models.toArray().map((model: any) => model[fieldName]))
-    //     .filter(value => value !== null && value !== undefined && value !== '');
-
-    const values = columns.value[fieldName].options().map((option: any) => option.label);
-
-    return values.map(value => ({
-        label: value?.toString() || '',
-        value: value
+    return values.map((value: any) => ({
+        label: String(value ?? ''),
+        value
     }));
+}
+
+// Кастомная функция фильтра для полей, где значение в строке может быть массивом (multiselect)
+const arrayIntersects = (cellValue: any, filterValue: any): boolean => {
+    const selected = Array.isArray(filterValue)
+        ? filterValue
+        : (filterValue !== null && filterValue !== undefined)
+            ? [filterValue]
+            : [];
+
+    // Пустой фильтр ничего не отфильтровывает
+    if (selected.length === 0) return true;
+
+    const cell = Array.isArray(cellValue)
+        ? cellValue
+        : (cellValue !== null && cellValue !== undefined)
+            ? [cellValue]
+            : [];
+
+    // Совпадение по хотя бы одному значению
+    return selected.some((v) => cell.includes(v));
 }
 
 const getColumnDataType = (fieldType: string): string => {
@@ -341,7 +378,8 @@ watch(() => props.models, () => {
         <template v-if="!isMobile()">
             <Column v-for="(column, name) in columns" :key="name" :field="name" :header="column.label"
                 :dataType="getColumnDataType(column.type)" :sortable="column.sortable ?? true"
-                :style="column.style || ''" :class="column.class || ''" :frozen="column.frozen ?? false">
+                :style="column.style || ''" :class="column.class || ''" :frozen="column.frozen ?? false"
+                :filterFunction="column.type === 'multiselect' ? arrayIntersects : undefined">
                 <template #filter="{ filterModel, filterCallback }">
                     <!-- Числовые типы -->
                     <template v-if="column.type === 'number' || column.type === 'integer'">
@@ -386,7 +424,6 @@ watch(() => props.models, () => {
 
                     <!-- MultiSelect с опциями -->
                     <template v-else-if="column.type === 'multiselect'">
-                        {{ getFilterOptions(name) }}
                         <MultiSelect v-model="filterModel.value" size="small" fluid placeholder="Все"
                             :options="getFilterOptions(name)" option-label="label" option-value="value"
                             @change="filterCallback()" />
