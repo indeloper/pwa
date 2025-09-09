@@ -35,6 +35,13 @@ export default class BaseCollection<T extends IModel<T>> {
     }
 
     /**
+     * Найти элементы по ID
+     */
+    whereIds(ids: number[]): BaseCollection<T> {
+        return new BaseCollection(this.filter(item => ids.includes((item as any).id)).toArray());
+    }
+
+    /**
      * Найти элемент по UUID
      */
     findByUuid(uuid: string): T | undefined {

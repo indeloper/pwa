@@ -17,8 +17,9 @@ export interface FieldOptions {
     required?: boolean;      // шорткат для обязательности, без явного импорта ValidationRules
     description?: string;    // текст подсказки
     validationRules?: ValidationRule[]; // правила валидации (интегрируются с Validatable)
-    options?: { label: string; value: any }[] | (() => { label: string; value: any }[]);
+    options?: { label: string; value: any }[] | ((context?: any) => { label: string; value: any }[]);
     displayValue?: (value: any) => string; // функция для отображения значения
+    filterValue?: (value: any) => any; // функция для получения значения для фильтрации
 }
 
 const FIELDS_META = Symbol('fieldsMeta');
@@ -105,7 +106,7 @@ export function Field(options: FieldOptions) {
                     const value = fieldMeta?.[optionKey];
                     // Если значение - функция, вызываем её
                     if (typeof value === 'function') {
-                        return value();
+                        return value(this);
                     }
                     return value;
                 },
@@ -123,6 +124,21 @@ export function Field(options: FieldOptions) {
                     }
                     // Fallback: возвращаем строковое представление значения
                     return value?.toString() || '';
+                },
+                enumerable: true,
+                configurable: true
+            });
+
+            // Метод для получения filterValue функции
+            Object.defineProperty(target, 'getFieldFilterValue', {
+                value: function (fieldName: string, value: any): any {
+                    const fieldMeta = (this.constructor as any)[FIELDS_META]?.[fieldName];
+                    const filterValueFn = fieldMeta?.['filterValue'];
+                    if (typeof filterValueFn === 'function') {
+                        return filterValueFn(value);
+                    }
+                    // Fallback: возвращаем значение как есть для фильтрации
+                    return value;
                 },
                 enumerable: true,
                 configurable: true
@@ -162,6 +178,21 @@ export function Field(options: FieldOptions) {
                     }
                     // Fallback: возвращаем строковое представление значения
                     return value?.toString() || '';
+                },
+                enumerable: true,
+                configurable: true
+            });
+
+            // Статический метод для получения filterValue функции
+            Object.defineProperty(ctor, 'getFieldFilterValue', {
+                value: function (fieldName: string, value: any): any {
+                    const fieldMeta = (this as any)[FIELDS_META]?.[fieldName];
+                    const filterValueFn = fieldMeta?.['filterValue'];
+                    if (typeof filterValueFn === 'function') {
+                        return filterValueFn(value);
+                    }
+                    // Fallback: возвращаем значение как есть для фильтрации
+                    return value;
                 },
                 enumerable: true,
                 configurable: true

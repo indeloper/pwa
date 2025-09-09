@@ -7,10 +7,9 @@ import { useToastMessage } from '@/composables/useToastMessage';
 import MaterialTypeForm from '@/components/forms/MaterialTypeForm.vue';
 import Dialog from 'primevue/dialog';
 import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
-import { useMaterialTypeStore } from '@/stores/useMaterialTypeStore';
 import { useConfirmMessage } from '@/composables/useConfirmMessage';
 
-const pageLoading = ref(true);
+const pageLoading = ref(false);
 const isAddDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
 const editableType = ref<MaterialType>(MaterialType.createEmpty());
@@ -20,7 +19,8 @@ const newType = ref<MaterialType>(MaterialType.createEmpty());
 const { addErrorMessage, addSuccessMessage } = useToastMessage();
 const { confirmDeleteMessage } = useConfirmMessage();
 
-const materialTypeStore = useMaterialTypeStore();
+const materialTypeStore = MaterialType.resourceStore;
+/** @ts-ignore */
 const { types, typesLoading } = storeToRefs(materialTypeStore);
 
 const handleStartAdd = () => {
@@ -39,7 +39,7 @@ const handleDeleteType = (model: MaterialType) => {
                 .then(() => {
                     addSuccessMessage('Тип материала успешно удален');
                 })
-                .catch((error) => {
+                .catch((error: any) => {
                     addErrorMessage('Не удалось удалить тип материала');
                     console.error(error);
                 });
@@ -53,7 +53,7 @@ const handleStoreType = (model: MaterialType) => {
             newType.value = MaterialType.createEmpty();
             addSuccessMessage('Тип материала успешно добавлен');
         })
-        .catch((error) => {
+        .catch((error: any) => {
             addErrorMessage('Не удалось добавить тип материала');
             console.error(error);
         });
@@ -65,7 +65,7 @@ const handleUpdateType = (model: MaterialType) => {
             editableType.value = MaterialType.createEmpty();
             addSuccessMessage('Тип материала успешно обновлен');
         })
-        .catch((error) => {
+        .catch((error: any) => {
             addErrorMessage('Не удалось обновить тип материала');
             console.error(error);
         });
@@ -76,7 +76,7 @@ onMounted(() => {
         .then(() => {
             pageLoading.value = false;
         })
-        .catch((error) => {
+        .catch((error: any) => {
             addErrorMessage('Не удалось загрузить типы материалов');
             console.error('Error loading types:', error);
         })

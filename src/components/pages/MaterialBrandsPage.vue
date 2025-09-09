@@ -1,126 +1,99 @@
 <script setup lang="ts">
-import { defineAsyncComponent, onMounted, ref } from 'vue';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import Button from 'primevue/button';
-import InputText from 'primevue/inputtext';
-import Dialog from 'primevue/dialog';
-import Textarea from 'primevue/textarea';
-import Dropdown from 'primevue/dropdown';
-import { useMaterialsLibraryStore } from '../../stores/materialsLibrary';
+import { onMounted } from 'vue';
 import { storeToRefs } from 'pinia';
-import MaterialBrand from '../../models/MaterialBrand';
-import type MaterialType from '../../models/MaterialType';
-import { useToast } from 'primevue/usetoast';
-import Select from 'primevue/select';
-import { useDialog } from 'primevue/usedialog';
+import { ref } from 'vue';
+import { useToastMessage } from '@/composables/useToastMessage';
+import Dialog from 'primevue/dialog';
+import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
+import { useConfirmMessage } from '@/composables/useConfirmMessage';
+import MaterialBrand from '@/models/MaterialBrand';
 import MaterialBrandForm from '@/components/forms/MaterialBrandForm.vue';
 
-
-const toast = useToast();
-const dialog = useDialog();
-const materialsLibraryStore = useMaterialsLibraryStore();
-const { brands, brandsLoading, types, typesLoading } = storeToRefs(materialsLibraryStore);
-
-const selectedType = ref<MaterialType | null>(null);
-const isNewDialogOpen = ref(false);
+const pageLoading = ref(false);
+const isAddDialogOpen = ref(false);
 const isEditDialogOpen = ref(false);
+const editableBrand = ref<MaterialBrand>(MaterialBrand.createEmpty());
 
-const newBrand = ref<MaterialBrand>({} as MaterialBrand);
-const editableBrand = ref<MaterialBrand>({} as MaterialBrand);
+const newBrand = ref<MaterialBrand>(MaterialBrand.createEmpty());
 
-const showNewDialog = async () => {
-    // if (types.value.count() === 0) {
-    //     await materialsLibraryStore.loadTypes();
-    // }
+const { addErrorMessage, addSuccessMessage } = useToastMessage();
+const { confirmDeleteMessage } = useConfirmMessage();
 
-    // selectedType.value = null;
-    isNewDialogOpen.value = true;
+const materialBrandStore = MaterialBrand.resourceStore;
+/** @ts-ignore */
+const { brands, brandsLoading } = storeToRefs(materialBrandStore);
+
+const handleStartAdd = () => {
+    isAddDialogOpen.value = true;
 }
+const handleStartEdit = (model: MaterialBrand) => {
+    console.log(model);
 
-const showEditDialog = async (brand: MaterialBrand) => {
-    // Загружаем типы если их нет
-    if (types.value.count() === 0) {
-        await materialsLibraryStore.loadTypes();
-    }
-
-    if (brand.material_type) {
-        brand.material_type = types.value.findById(brand.material_type.id!) as MaterialType;
-    }
-
-    editableBrand.value = brand;
-
+    editableBrand.value = MaterialBrand.clone(model);
     isEditDialogOpen.value = true;
 }
-
-const handleSaveBrand = async () => {
-    if (!newBrand.value || !selectedType.value) return;
-
-    try {
-        await materialsLibraryStore.storeBrand(newBrand.value);
-        isNewDialogOpen.value = false;
-        toast.add({ severity: 'info', summary: 'Успешно', detail: 'Бренд добавлен', life: 3000 });
-        materialsLibraryStore.loadBrands();
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Ошибка', detail: 'Не удалось добавить бренд', life: 3000 });
-    }
+const handleDeleteType = (model: MaterialBrand) => {
+    confirmDeleteMessage({
+        accept: async () => {
+            materialBrandStore.deleteBrand(model)
+                .then(() => {
+                    addSuccessMessage('Марка материала успешно удален');
+                })
+                .catch((error: any) => {
+                    addErrorMessage('Не удалось удалить марку материала');
+                    console.error(error);
+                });
+        },
+    });
+}
+const handleStoreBrand = (model: MaterialBrand) => {
+    materialBrandStore.storeBrand(model)
+        .then(() => {
+            isAddDialogOpen.value = false;
+            newBrand.value = MaterialBrand.createEmpty();
+            addSuccessMessage('Марка материала успешно добавлен');
+        })
+        .catch((error: any) => {
+            addErrorMessage('Не удалось добавить марку материала');
+            console.error(error);
+        });
+}
+const handleUpdateBrand = (model: MaterialBrand) => {
+    materialBrandStore.updateBrand(model)
+        .then(() => {
+            isEditDialogOpen.value = false;
+            editableBrand.value = MaterialBrand.createEmpty();
+            addSuccessMessage('Марка материала успешно обновлен');
+        })
+        .catch((error: any) => {
+            addErrorMessage('Не удалось обновить марку материала');
+            console.error(error);
+        });
 }
 
-const handleUpdateBrand = async () => {
-    if (!editableBrand.value || !selectedType.value) return;
-
-    try {
-        // Обновляем модель с выбранным типом
-        editableBrand.value.material_type = selectedType.value;
-
-        await materialsLibraryStore.updateBrand(editableBrand.value);
-        isEditDialogOpen.value = false;
-        toast.add({ severity: 'info', summary: 'Успешно', detail: 'Бренд обновлен', life: 3000 });
-        materialsLibraryStore.loadBrands();
-    } catch (error) {
-        toast.add({ severity: 'error', summary: 'Ошибка', detail: 'Не удалось обновить бренд', life: 3000 });
-    }
-}
-
-onMounted(async () => {
-    await materialsLibraryStore.loadBrands();
-    await materialsLibraryStore.loadTypes();
+onMounted(() => {
+    materialBrandStore.loadBrands()
+        .then(() => {
+            pageLoading.value = false;
+        })
+        .catch((error: any) => {
+            addErrorMessage('Не удалось загрузить марки материалов');
+            console.error('Error loading brands:', error);
+        })
 });
 </script>
 
 <template>
+    <BaseResourceTable :models="brands.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+        :startEdit="handleStartEdit" :startDelete="handleDeleteType" title="Марки материалов" />
 
-    <!-- <MaterialBrandsTable :material-brands="brands.toArray()" :brands-loading="brandsLoading"
-        @show-add-dialog="showNewDialog" @show-edit-dialog="showEditDialog" />
-
-
-    <MaterialBrandForm :brand="newBrand" as-dialog v-model:visible="isNewDialogOpen" /> -->
-
-    <!-- <Dialog v-model:visible="isNewDialogOpen" header="Добавление бренда" modal>
-        <div v-if="newBrand" class="flex flex-col gap-4">
-            <InputText v-model="newBrand.name" placeholder="Наименование бренда" />
-            <Select v-model="newBrand.material_type" :options="types.toArray()" optionLabel="name"
-                placeholder="Выберите тип материала" :loading="typesLoading" />
-            <InputText v-model="newBrand.weight" placeholder="Вес (например: 0.0790)" />
-            <Textarea v-model="newBrand.description" placeholder="Описание бренда" />
-        </div>
-        <template #footer>
-            <Button severity="secondary" label="Отмена" @click="isNewDialogOpen = false" />
-            <Button label="Сохранить" @click="handleSaveBrand" />
-        </template>
+    <Dialog v-model:visible="isAddDialogOpen" header="Добавление типа материала" modal>
+        <MaterialBrandForm v-model:model="newBrand" :loading="brandsLoading" @submit="handleStoreBrand"
+            @cancel="isAddDialogOpen = false" />
     </Dialog>
 
-    <Dialog v-model:visible="isEditDialogOpen" header="Редактирование бренда" modal>
-        <div v-if="editableBrand" class="flex flex-col gap-4">
-            <InputText v-model="editableBrand.name" placeholder="Наименование бренда" />
-            <Select v-model="editableBrand.material_type" :options="types.toArray()" optionLabel="name"
-                placeholder="Выберите тип материала" :loading="typesLoading" />
-            <InputText v-model="editableBrand.weight" placeholder="Вес (например: 0.0790)" />
-            <Textarea v-model="editableBrand.description" placeholder="Описание бренда" />
-        </div>
-        <template #footer>
-            <Button severity="secondary" label="Отмена" @click="isEditDialogOpen = false" />
-            <Button label="Сохранить" @click="handleUpdateBrand" />
-        </template>
-    </Dialog> -->
+    <Dialog v-model:visible="isEditDialogOpen" header="Редактирование типа материала" modal>
+        <MaterialBrandForm v-model:model="editableBrand" :loading="brandsLoading" @submit="handleUpdateBrand"
+            @cancel="isEditDialogOpen = false" />
+    </Dialog>
 </template>

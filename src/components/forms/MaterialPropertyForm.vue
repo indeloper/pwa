@@ -1,16 +1,16 @@
 <script setup lang="ts">
-import type MaterialBrand from '@/models/MaterialBrand';
+import type MaterialProperty from '@/models/MaterialProperty';
 import BaseResourceForm from '@/components/forms/BaseResourceForm.vue';
 
 const emit = defineEmits<{
-    (e: 'submit', model: MaterialBrand): void;
+    (e: 'submit', model: MaterialProperty): void;
     (e: 'cancel'): void;
 }>();
 
-const model = defineModel<MaterialBrand>('model', { required: true });
+const model = defineModel<MaterialProperty>('model', { required: true });
 const loading = defineModel<boolean>('loading', { required: true });
 
-const handleSubmit = (model: MaterialBrand) => {
+const handleSubmit = (model: MaterialProperty) => {
     emit('submit', model);
 };
 

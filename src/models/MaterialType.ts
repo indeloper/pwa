@@ -15,6 +15,8 @@ import { ModelsTransformStrategies as Strategy } from "@/enums";
 import type { ValidationError } from "@/decorators/validation";
 import type MaterialTypeCollection from "./collections/MaterialTypeCollection";
 import MaterialUnit from "./MaterialUnit";
+import { useMaterialTypeStore } from "@/stores/useMaterialTypeStore";
+import MaterialProperty from "./MaterialProperty";
 
 export interface IMaterialType extends IModel<IMaterialType>, ITransformable<IMaterialType>, IValidatable {
     id?: number;
@@ -23,12 +25,14 @@ export interface IMaterialType extends IModel<IMaterialType>, ITransformable<IMa
     description: string | null;
     coefficient: number;
     display_name: string;
+    material_property_ids: number[];
     update(): Promise<this>;
     destroy(): Promise<void>;
 }
 @Resource({
     path: 'https://erp.sk-gorod.com/api/v3/library/materials/material-types',
     key: 'id',
+    store: () => useMaterialTypeStore()
 })
 @Model<any>()
 @Collectable({})
@@ -45,7 +49,7 @@ class MaterialType {
     @Field({
         label: 'Наименование',
         type: 'text',
-        placeholder: 'Укажите полное наименование',
+        placeholder: 'Укажите наименование',
         required: true,
     })
     name: string = '';
@@ -75,6 +79,20 @@ class MaterialType {
     })
     accounting_by_main_value: boolean = false;
 
+    @From(Strategy.API_RESPONSE, 'material_property_ids')
+    @To(Strategy.API_REQUEST, 'material_property_ids')
+    @Field({
+        label: 'Свойства материала',
+        type: 'multiselect',
+        placeholder: 'Укажите свойства материала',
+        options: () => MaterialProperty.resourceStore.properties.toArray().map((property: MaterialProperty) => ({
+            label: property.name,
+            value: property.id,
+        })),
+        displayValue: (value: number[]) => value ? MaterialProperty.resourceStore.properties.whereIds(value)?.toArray().map((property: MaterialProperty) => property.name).join(', ') : '',
+    })
+    material_property_ids: number[] = [];
+
 
     @From(Strategy.API_RESPONSE, 'description')
     @To(Strategy.API_REQUEST, 'description')
@@ -94,15 +112,12 @@ class MaterialType {
     })
     instruction: string | null = null;
 
-    get unit(): MaterialUnit | null {
-        return MaterialUnit.resourceStore.units.findById(this.unit_id);
+    get material_properties(): MaterialProperty[] {
+        return MaterialProperty.resourceStore.properties.whereIds(this.material_property_ids);
     }
 
-    get unitData(): MaterialUnit | null {
-        return MaterialUnit.resourceStore.units.toArray().map((unit: MaterialUnit) => ({
-            label: unit.label,
-            value: unit.id,
-        }));
+    get unit(): MaterialUnit | null {
+        return MaterialUnit.resourceStore.units.findById(this.unit_id);
     }
 }
 
@@ -120,6 +135,7 @@ declare namespace MaterialType {
     function validate(): boolean;
     const resourcePath: string;
     const resourceKey: string;
+    const resourceStore: any;
     function buildPath(id?: string | number): string;
     function getFieldOption(fieldName: string, optionKey: string): any;
     function getFieldDisplayValue(fieldName: string, value: any): string;

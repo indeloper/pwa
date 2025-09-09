@@ -6,6 +6,7 @@ import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import ToggleSwitch from 'primevue/toggleswitch';
+import MultiSelect from 'primevue/multiselect';
 const emit = defineEmits<{
     (e: 'submit', model: any): void;
     (e: 'cancel'): void;
@@ -48,6 +49,12 @@ const handleCancel = () => {
                         </template>
                         <template v-if="field.type === 'select'">
                             <Select v-model="model![name]" :placeholder="field.placeholder || field.label || ''" fluid
+                                :disabled="loading" :required="field.required"
+                                :options="model.getFieldOption(name, 'options')" option-value="value"
+                                option-label="label" />
+                        </template>
+                        <template v-if="field.type === 'multiselect'">
+                            <MultiSelect v-model="model![name]" :placeholder="field.placeholder || field.label || ''" fluid
                                 :disabled="loading" :required="field.required"
                                 :options="model.getFieldOption(name, 'options')" option-value="value"
                                 option-label="label" />

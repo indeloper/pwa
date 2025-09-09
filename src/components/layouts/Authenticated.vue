@@ -90,7 +90,7 @@ const megaMenuItems = ref([
                     items: [
                         {
                             label: 'Единицы измерения',
-                            icon: 'pi pi-ruler',
+                            icon: 'pi pi-calculator',
                             subtext: 'Управление единицами измерения материалов',
                             command: () => router.push({ name: 'library-materials-units' })
                         },
@@ -100,12 +100,6 @@ const megaMenuItems = ref([
                             subtext: 'Типы материалов',
                             command: () => router.push({ name: 'library-materials-types' })
                         },
-                        {
-                            label: 'Бренды',
-                            icon: 'pi pi-star',
-                            subtext: 'Производители материалов',
-                            command: () => router.push({ name: 'library-materials-brands' })
-                        }
                     ]
                 }
             ],
@@ -113,10 +107,10 @@ const megaMenuItems = ref([
                 {
                     items: [
                         {
-                            label: 'Стандарты',
-                            icon: 'pi pi-check-circle',
-                            subtext: 'Технические стандарты',
-                            command: () => router.push({ name: 'library-materials-standards' })
+                            label: 'Марки материалов',
+                            icon: 'pi pi-star',
+                            subtext: 'Марки материалов',
+                            command: () => router.push({ name: 'library-materials-brands' })
                         },
                         {
                             label: 'Свойства',

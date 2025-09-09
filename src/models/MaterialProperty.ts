@@ -1,90 +1,113 @@
-import { Model, Transformable, From, To, Validatable, Validate, ValidationRules } from "@/decorators";
+import {
+    Model,
+    Transformable,
+    From,
+    To,
+    Validatable,
+    type IModel,
+    type ITransformable,
+    type IValidatable,
+    Resource,
+    Field,
+    Collectable,
+} from "@/decorators";
 import { ModelsTransformStrategies as Strategy } from "@/enums";
-import { useMaterialProperties } from "@/composables/useMaterialProperties";
+import type { ValidationError } from "@/decorators/validation";
+import { useMaterialPropertyStore } from "@/stores/useMaterialPropertyStore";
+import type MaterialPropertyCollection from "./collections/MaterialPropertyCollection";
 
-export interface IMaterialProperty {
+export interface IMaterialProperty extends IModel<IMaterialProperty>, ITransformable<IMaterialProperty>, IValidatable {
     id?: number;
+    label: string;
     name: string;
     description: string | null;
     weight_factor: number;
+    update(): Promise<this>;
+    destroy(): Promise<void>;
 }
-
-const { updateProperty, storeProperty, deleteProperty, fetchProperties } = useMaterialProperties();
-
-@Model()
+@Resource({
+    path: 'https://erp.sk-gorod.com/api/v3/library/materials/material-properties',
+    key: 'id',
+    store: () => useMaterialPropertyStore()
+})
+@Model<any>()
+@Collectable({})
 @Transformable()
 @Validatable()
-export default class MaterialProperty implements IMaterialProperty {
+class MaterialProperty {
+
     @From(Strategy.API_RESPONSE, 'id')
     @To(Strategy.API_REQUEST, 'id')
     id?: number;
-    
-    @From(Strategy.API_RESPONSE, 'attributes.name')
+
+    @From(Strategy.API_RESPONSE, 'name')
     @To(Strategy.API_REQUEST, 'name')
-    @Validate([ValidationRules.required('Наименование обязательно')])
+    @Field({
+        label: 'Наименование',
+        type: 'text',
+        placeholder: 'Укажите наименование',
+        required: true,
+    })
     name: string = '';
-    
-    @From(Strategy.API_RESPONSE, 'attributes.description')
-    @To(Strategy.API_REQUEST, 'description')
-    description: string | null = null;
-    
-    @From(Strategy.API_RESPONSE, 'attributes.weight_factor')
+
+    @From(Strategy.API_RESPONSE, 'weight_factor')
     @To(Strategy.API_REQUEST, 'weight_factor')
-    weight_factor: number = 0;
+    @Field({
+        label: 'Коэффициент веса',
+        type: 'number',
+        placeholder: 'Укажите коэффициент веса',
+    })
+    weight_factor: number = 1;
 
-    static get collection() {
-        return MaterialPropertyCollection;
-    }
-
-    get displayName(): string {
-        return this.name;
-    }
-
-    get weightFactorFormatted(): string {
-        return this.weight_factor.toFixed(2);
-    }
-
-    static async fetch(id?: number): Promise<MaterialPropertyCollection> {
-        return await fetchProperties();
-    }
-
-    async update(): Promise<this> {
-        await updateProperty(this);
-        return this;
-    }
-
-    async store(): Promise<this> {
-        await storeProperty(this);
-        return this;
-    }
-
-    async destroy(): Promise<void> {
-        await deleteProperty(this);
-    }
-
-    // Методы, добавленные декораторами
-    validationErrors(): any[] {
-        return [];
-    }
-
-    isValid(): boolean {
-        return true;
-    }
-
-    validate(): boolean {
-        return this.isValid();
-    }
-
-    // UUID, добавленный декоратором @Mode
-
-    // Методы трансформации, добавленные декоратором @Transformable
-    from(strategy: any, data: any): this {
-        return this;
-    }
-
-    to(strategy: any): any {
-        return {};
-    }
+    @From(Strategy.API_RESPONSE, 'description')
+    @To(Strategy.API_REQUEST, 'description')
+    @Field({
+        label: 'Описание',
+        type: 'longtext',
+        placeholder: 'Укажите описание',
+    })
+    description: string | null = null;
 }
 
-import MaterialPropertyCollection from "./collections/MaterialPropertyCollection";
+declare namespace MaterialProperty {
+    function collect(items: IMaterialProperty[]): MaterialPropertyCollection;
+    function createEmpty(): MaterialProperty;
+    function clone(model: MaterialProperty): MaterialProperty;
+    function from(strategy: string | symbol, data: any): MaterialProperty;
+    function to(strategy: string | symbol): any;
+    function fetchAll(): Promise<MaterialPropertyCollection>;
+    function fetchOne(id: number | string): Promise<MaterialProperty>;
+    function store(model: MaterialProperty): Promise<MaterialProperty>;
+    function validationErrors(): ValidationError[];
+    function isValid(): boolean;
+    function validate(): boolean;
+    const resourcePath: string;
+    const resourceKey: string;
+    const resourceStore: any;
+    function buildPath(id?: string | number): string;
+    function getFieldOption(fieldName: string, optionKey: string): any;
+    function getFieldDisplayValue(fieldName: string, value: any): string;
+}
+
+declare interface MaterialProperty {
+    to(strategy: string | symbol): any;
+    from(strategy: string | symbol, data: any): this;
+    refresh(other: Partial<MaterialProperty>): MaterialProperty;
+    validationErrors(): ValidationError[];
+    isValid(): boolean;
+    validate(): boolean;
+    isRequired(property: string): boolean;
+    isUnsigned(property: string): boolean;
+    getMin(property: string): number | undefined;
+    getMax(property: string): number | undefined;
+    getMinLength(property: string): number | undefined;
+    getMaxLength(property: string): number | undefined;
+    update(): Promise<MaterialProperty>;
+    destroy(): Promise<void>;
+    getResourcePath(): string;
+    getResourceKey(): string;
+    getFieldOption(fieldName: string, optionKey: string): any;
+    getFieldDisplayValue(fieldName: string, value: any): string;
+}
+
+export default MaterialProperty;

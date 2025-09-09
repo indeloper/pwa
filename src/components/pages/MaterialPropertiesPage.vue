@@ -1,45 +1,99 @@
 <script setup lang="ts">
 import { onMounted } from 'vue';
-import DataTable from 'primevue/datatable';
-import Column from 'primevue/column';
-import { useMaterialsLibraryStore } from '../../stores/materialsLibrary';
 import { storeToRefs } from 'pinia';
+import { ref } from 'vue';
+import { useToastMessage } from '@/composables/useToastMessage';
+import Dialog from 'primevue/dialog';
+import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
+import { useConfirmMessage } from '@/composables/useConfirmMessage';
+import MaterialProperty from '@/models/MaterialProperty';
+import MaterialPropertyForm from '@/components/forms/MaterialPropertyForm.vue';
 
-const materialsLibraryStore = useMaterialsLibraryStore();
-const { properties, propertiesLoading } = storeToRefs(materialsLibraryStore);
+const pageLoading = ref(false);
+const isAddDialogOpen = ref(false);
+const isEditDialogOpen = ref(false);
+const editableProperty = ref<MaterialProperty>(MaterialProperty.createEmpty());
 
-onMounted(async () => {
-    try {
-        await materialsLibraryStore.loadProperties();
-    } catch (error) {
-        console.error('Failed to fetch material properties:', error);
-    }
+const newProperty = ref<MaterialProperty>(MaterialProperty.createEmpty());
+
+const { addErrorMessage, addSuccessMessage } = useToastMessage();
+const { confirmDeleteMessage } = useConfirmMessage();
+
+const materialPropertyStore = MaterialProperty.resourceStore;
+/** @ts-ignore */
+const { properties, propertiesLoading } = storeToRefs(materialPropertyStore);
+
+const handleStartAdd = () => {
+    isAddDialogOpen.value = true;
+}
+const handleStartEdit = (model: MaterialProperty) => {
+    console.log(model);
+
+    editableProperty.value = MaterialProperty.clone(model);
+    isEditDialogOpen.value = true;
+}
+const handleDeleteType = (model: MaterialProperty) => {
+    confirmDeleteMessage({
+        accept: async () => {
+            materialPropertyStore.deleteProperty(model)
+                .then(() => {
+                    addSuccessMessage('Свойство материала успешно удален');
+                })
+                .catch((error: any) => {
+                    addErrorMessage('Не удалось удалить свойство материала');
+                    console.error(error);
+                });
+        },
+    });
+}
+const handleStoreProperty = (model: MaterialProperty) => {
+    materialPropertyStore.storeProperty(model)
+        .then(() => {
+            isAddDialogOpen.value = false;
+            newProperty.value = MaterialProperty.createEmpty();
+            addSuccessMessage('Свойство материала успешно добавлен');
+        })
+        .catch((error: any) => {
+                addErrorMessage('Не удалось добавить свойство материала');
+            console.error(error);
+        });
+}
+const handleUpdateProperty = (model: MaterialProperty) => {
+    materialPropertyStore.updateProperty(model)
+        .then(() => {
+            isEditDialogOpen.value = false;
+            editableProperty.value = MaterialProperty.createEmpty();
+            addSuccessMessage('Марка материала успешно обновлен');
+        })
+        .catch((error: any) => {
+            addErrorMessage('Не удалось обновить свойство материала');
+            console.error(error);
+        });
+}
+
+onMounted(() => {
+    materialPropertyStore.loadProperties()
+        .then(() => {
+            pageLoading.value = false;
+        })
+        .catch((error: any) => {
+            addErrorMessage('Не удалось загрузить свойства материалов');
+            console.error('Error loading brands:', error);
+        })
 });
 </script>
 
 <template>
-    <div>
-        <DataTable 
-            :value="properties.toArray()" 
-            size="small" 
-            dataKey="id" 
-            :loading="propertiesLoading" 
-            row-hover
-            scrollable
-            scrollHeight="600px"
-            :virtualScrollerOptions="{ itemSize: 46 }"
-        >
-            <template #header>
-                <div class="flex justify-between items-center">
-                    <h1 class="text-2xl font-bold">Свойства материалов</h1>
-                </div>
-            </template>
-            <Column field="name" header="Наименование" class="w-[40%]">
-            </Column>
-            <Column field="weightFactorFormatted" header="Весовой коэффициент" class="w-[30%]">
-            </Column>
-            <Column field="description" header="Описание" class="w-[30%]">
-            </Column>
-        </DataTable>
-    </div>
+    <BaseResourceTable :models="properties.toArray()" :models-loading="pageLoading" :startAdd="handleStartAdd"
+        :startEdit="handleStartEdit" :startDelete="handleDeleteType" title="Свойства материалов" />
+
+    <Dialog v-model:visible="isAddDialogOpen" header="Добавление свойства материала" modal>
+        <MaterialPropertyForm v-model:model="newProperty" :loading="propertiesLoading" @submit="handleStoreProperty"
+            @cancel="isAddDialogOpen = false" />
+    </Dialog>
+
+    <Dialog v-model:visible="isEditDialogOpen" header="Редактирование свойства материала" modal>
+        <MaterialPropertyForm v-model:model="editableProperty" :loading="propertiesLoading" @submit="handleUpdateProperty"
+            @cancel="isEditDialogOpen = false" />
+    </Dialog>
 </template>

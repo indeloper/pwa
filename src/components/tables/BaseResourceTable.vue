@@ -7,12 +7,16 @@ import Column from 'primevue/column';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Select from 'primevue/select';
-import { FilterMatchMode } from '@primevue/core/api';
+import MultiSelect from 'primevue/multiselect';
+import { FilterMatchMode, FilterService } from '@primevue/core/api';
 import InputNumber from 'primevue/inputnumber';
 import ProgressSpinner from 'primevue/progressspinner';
 import Menu from 'primevue/menu';
+import Dialog from 'primevue/dialog';
 import { isMobile } from '@/helpers';
-
+import { usePrimeVue } from 'primevue/config';
+import { onMounted } from 'vue';
+const primeVue = usePrimeVue();
 
 const props = defineProps<{
     models: T[];
@@ -85,7 +89,7 @@ const resolvedColumns = computed(() => {
             field: key,
             header: meta?.label ?? key,
             type,
-            filter: !props.disableFiltering && (type === 'text' || type === 'number' || type === 'boolean' || type === 'select' || type === 'longtext'),
+            filter: !props.disableFiltering && (type === 'text' || type === 'number' || type === 'boolean' || type === 'select' || type === 'multiselect' || type === 'longtext'),
             sortable: !props.disableSorting,
             frozen: false,
             showOnMobileSummary: false,
@@ -98,6 +102,11 @@ const selectedModels = ref<T[]>([]);
 const selectedModel = ref<T | null>(null);
 
 const menu = ref<any | null>(null);
+
+// Модальное окно для longtext
+const longtextDialogVisible = ref(false);
+const longtextDialogContent = ref('');
+const longtextDialogTitle = ref('');
 const menuItems = ref([
     {
         label: 'Редактировать',
@@ -129,25 +138,100 @@ const handleMassDelete = () => {
     props.startMassDelete?.(selectedModels.value as unknown as T[]);
 }
 
+const showLongtextDialog = (title: string, content: string) => {
+    longtextDialogTitle.value = title;
+    longtextDialogContent.value = content;
+    longtextDialogVisible.value = true;
+}
+
+const hideLongtextDialog = () => {
+    longtextDialogVisible.value = false;
+}
+
+// Кастомная функция фильтрации для полей
+const customFilterFunction = (value: any, filter: any, fieldName: string) => {
+    console.log('customFilterFunction', value, filter, fieldName);
+
+    if (!filter || filter === null || filter === undefined || (Array.isArray(filter) && filter.length === 0)) return true;
+
+    // Получаем первое значение из моделей для доступа к методам
+    const model = firstModel.value;
+    if (!model) return true;
+
+    try {
+        // Используем filterValue для получения массива ID
+        const filterValue = model.getFieldFilterValue(fieldName, value);
+
+        if (Array.isArray(filterValue) && Array.isArray(filter)) {
+            // Проверка пересечения массивов
+            return filterValue.some((val: any) => filter.includes(val));
+        }
+
+        if (Array.isArray(filterValue)) {
+            return filterValue.includes(filter);
+        }
+
+        return filterValue === filter;
+    } catch (e) {
+        return false;
+    }
+};
+
 const initFilters = () => {
     const cols = resolvedColumns.value;
-    filters.value = cols.filter((column: any) => column.filter).reduce((acc: Record<string, FilterSettings>, column: any) => {
-        let matchMode = FilterMatchMode.STARTS_WITH;
-        if (column.type === 'number' || column.type === 'boolean' || column.type === 'select') {
-            matchMode = FilterMatchMode.EQUALS;
-        }
-        // Для longtext используем CONTAINS для поиска внутри текста
-        if (column.type === 'longtext') {
-            matchMode = FilterMatchMode.CONTAINS;
-        }
-        acc[column.field] = { value: null, matchMode } as FilterSettings;
-        return acc;
-    }, {} as Record<string, FilterSettings>);
+
+    filters.value = cols
+        .filter((column: any) => column.filter)
+        .reduce((acc: Record<string, FilterSettings>, column: any) => {
+            let matchMode = FilterMatchMode.STARTS_WITH;
+
+            if (column.type === 'multiselect') {
+                // используем кастомный фильтр, который зарегистрировали через FilterService
+                matchMode = 'filterByArrayEquals' as any;
+            } else if (column.type === 'number' || column.type === 'boolean' || column.type === 'select') {
+                matchMode = FilterMatchMode.EQUALS;
+            } else if (column.type === 'longtext') {
+                matchMode = FilterMatchMode.CONTAINS;
+            }
+
+            acc[column.field] = {
+                operator: 'and',
+                constraints: [
+                    {
+                        value: null,
+                        matchMode,
+                    },
+                ],
+            } as unknown as FilterSettings;
+
+            return acc;
+        }, {} as Record<string, FilterSettings>);
+};
+
+
+const customArrayFilter = (value: any, filter: any) => {
+    console.log('customArrayFilter', value, filter);
+    return true;
 }
 
 onBeforeMount(() => {
+
     initFilters();
 })
+
+onMounted(() => {
+    FilterService.register('filterByArrayEquals', (arr: any[], value: any) => {
+    console.log('filterByArrayEquals', arr, value);
+
+    if (!value || value.length === 0) return true;
+    if (!Array.isArray(arr)) return false;
+
+    // проверка пересечения массивов
+    return arr.some(item => value.includes(item));
+});
+})
+
+
 
 watch(resolvedColumns, () => {
     initFilters();
@@ -187,15 +271,23 @@ watch(resolvedColumns, () => {
 
         <template v-if="!isMobile()">
             <Column v-for="column in resolvedColumns" :key="column.field" :field="column.field" :header="column.header"
-                :class="column.class" :sortable="column.sortable ?? true" :frozen="column.frozen ?? false">
+                :class="column.class" :sortable="column.sortable ?? true" :frozen="column.frozen ?? false"
+                :filterFunction="(value: any, filter: any) => customFilterFunction(value, filter, column.field)">
                 <template #body="{ data }">
-                    {{ data.getFieldDisplayValue(column.field, data[column.field]) }}
+                    <template v-if="column.type === 'longtext' && data[column.field]">
+                        <Button size="small" text @click="showLongtextDialog(column.header, data[column.field])"
+                            icon="pi pi-eye" />
+                    </template>
+                    <template v-else>
+                        {{ data.getFieldDisplayValue(column.field, data[column.field]) }}
+                    </template>
                 </template>
                 <template v-if="column.filter" #filter="slotProps">
                     <InputNumber v-if="column.type === 'number' && slotProps.filterModel"
                         v-model="slotProps.filterModel.value" size="small" fluid type="number"
                         @input="slotProps.filterCallback && slotProps.filterCallback()" placeholder="Поиск" />
-                    <InputText v-else-if="(column.type === 'text' || column.type === 'longtext') && slotProps.filterModel"
+                    <InputText
+                        v-else-if="(column.type === 'text' || column.type === 'longtext') && slotProps.filterModel"
                         v-model="slotProps.filterModel.value" size="small" fluid type="text"
                         @input="slotProps.filterCallback && slotProps.filterCallback()" placeholder="Поиск" />
                     <Select v-else-if="column.type === 'boolean' && slotProps.filterModel"
@@ -211,6 +303,10 @@ watch(resolvedColumns, () => {
                             { label: 'Все', value: null },
                             ...getFilterOptions(column.field)
                         ]" option-label="label" option-value="value" />
+                    <MultiSelect v-else-if="column.type === 'multiselect' && slotProps.filterModel"
+                        v-model="slotProps.filterModel.value" size="small" fluid
+                        @change="slotProps.filterCallback && slotProps.filterCallback()" placeholder="Все"
+                        :options="getFilterOptions(column.field)" option-label="label" option-value="value" />
                 </template>
             </Column>
             <Column class="w-[10%]">
@@ -243,8 +339,15 @@ watch(resolvedColumns, () => {
                             <template v-else>
                                 <div class="flex flex-col last:border-b-0 border-b border-gray-200 pb-2 px-2">
                                     <p class="font-medium text-gray-500 text-sm">{{ column.header }}</p>
-                                    <p class="font-bold">{{ data.getFieldDisplayValue(column.field, data[column.field])
-                                        }}</p>
+                                    <template v-if="column.type === 'longtext' && data[column.field]">
+                                        <Button size="small" text
+                                            @click="showLongtextDialog(column.header, data[column.field])"
+                                            icon="pi pi-eye" />
+                                    </template>
+                                    <template v-else>
+                                        <p class="font-bold">{{ data.getFieldDisplayValue(column.field,
+                                            data[column.field]) }}</p>
+                                    </template>
                                 </div>
                             </template>
 
@@ -256,4 +359,12 @@ watch(resolvedColumns, () => {
     </DataTable>
 
     <Menu ref="menu" id="overlay_menu" :model="menuItems" :popup="true" />
+
+    <!-- Модальное окно для отображения longtext -->
+    <Dialog v-model:visible="longtextDialogVisible" :header="longtextDialogTitle" modal class="w-[90vw] md:w-[50vw]">
+        <div class="whitespace-pre-wrap">{{ longtextDialogContent }}</div>
+        <template #footer>
+            <Button label="Закрыть" @click="hideLongtextDialog" />
+        </template>
+    </Dialog>
 </template>
