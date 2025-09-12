@@ -3,15 +3,23 @@ import { ref } from "vue";
 import { enqueueRefreshResourceTask } from "@/workers/tasks/refreshResource";
 import BaseResourceCollection from "@/models/BaseResourceCollection";
 import Warehouse from "@/models/Warehouse";
+import { useLocalStorage } from "@vueuse/core";
 
 export const useWarehouseStore = defineStore('warehouse', () => {
     const warehousesLoading = ref(false);
-    const warehouses = ref<BaseResourceCollection>(new BaseResourceCollection([]));
+    const warehouses = ref<BaseResourceCollection<any>>(new BaseResourceCollection<any>([]));
+    const selectedWarehouseId = useLocalStorage<number | null>('selected-warehouse-id', null);
+    const selectedWarehouseAtMaterialsPage = ref<Warehouse | null>(null);
 
     const loadWarehouses = async (): Promise<void> => {
         try {
             warehousesLoading.value = true;
             warehouses.value = await Warehouse.fetchAll();
+            const id = selectedWarehouseId.value;
+            if (id !== null && id !== undefined) {
+                const found = warehouses.value.findById(Number(id));
+                selectedWarehouseAtMaterialsPage.value = found ?? null;
+            }
         } catch (error) {
             console.error('Error loading warehouses:', error);
             throw error;
@@ -64,6 +72,11 @@ export const useWarehouseStore = defineStore('warehouse', () => {
         }
     };
 
+    const setSelectedWarehouse = (warehouse: Warehouse | null): void => {
+        selectedWarehouseAtMaterialsPage.value = warehouse;
+        selectedWarehouseId.value = warehouse?.id ?? null;
+    };
+
     const refreshResource = async (): Promise<void> => {
         enqueueRefreshResourceTask({
             modelCtor: Warehouse,
@@ -77,6 +90,8 @@ export const useWarehouseStore = defineStore('warehouse', () => {
     return {
         warehousesLoading,
         warehouses,
+        selectedWarehouseAtMaterialsPage,
+        setSelectedWarehouse,
         loadWarehouses,
         updateWarehouse,
         storeWarehouse,

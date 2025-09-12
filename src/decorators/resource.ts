@@ -1,6 +1,10 @@
 import { ModelsTransformStrategies as Strategy } from "@/enums";
 import BaseApi from "@/api/BaseApi";
 import BaseResourceService from "@/services/BaseResourceService";
+import BaseCollection from "@/models/BaseCollection";
+import BaseResourceCollection from "@/models/BaseResourceCollection";
+import { v4 as uuidv4 } from 'uuid';
+import { Transformable } from "./transform";
 
 export interface ResourceConfig {
     path: string;
@@ -14,6 +18,8 @@ export interface ResourceOptions extends ResourceConfig {
     // Кастомный сервис/АПИ (классы). Необязательны.
     serviceClass?: any;
     apiClass?: any;
+    // Кастомная коллекция для collect()
+    collectionClass?: typeof BaseCollection;
     // Управление набором методов
     only?: ResourceCrudMethod[];
     exclude?: ResourceCrudMethod[];
@@ -37,6 +43,161 @@ export interface IResourceInstance {
 export function Resource(configOrOptions: ResourceConfig | ResourceOptions) {
     return function (target: any) {
         const options = configOrOptions as ResourceOptions;
+
+        // Ensure transformable behavior is attached to the model
+        // This allows omitting @Transformable() on the class
+        try { Transformable()(target); } catch { /* ignore */ }
+
+        // ----------------------
+        // Inject Model-like behavior (uuid, clone, refresh)
+        // ----------------------
+        // Lazy uuid accessor: generates uuid on first access, preserves external assignments
+        if (!Object.getOwnPropertyDescriptor(target.prototype, 'uuid')) {
+            try {
+                Object.defineProperty(target.prototype, 'uuid', {
+                    get: function() {
+                        if (!(this as any).__uuid) {
+                            (this as any).__uuid = uuidv4();
+                        }
+                        return (this as any).__uuid;
+                    },
+                    set: function(v: string) {
+                        (this as any).__uuid = v;
+                    },
+                    enumerable: true,
+                    configurable: true,
+                });
+            } catch { /* ignore */ }
+        }
+
+        // Prototype.refresh: copy fields, preserve uuid
+        if (!('refresh' in target.prototype)) {
+            Object.defineProperty(target.prototype, 'refresh', {
+                value: function(other: any) {
+                    const currentUuid = (this as any).uuid;
+                    Object.assign(this, other);
+                    if (currentUuid) {
+                        (this as any).uuid = currentUuid;
+                    }
+                    return this;
+                },
+                writable: false,
+                configurable: false,
+            });
+        }
+
+        // Static clone: create new instance and copy props via refresh
+        if (!('clone' in target)) {
+            Object.defineProperty(target, 'clone', {
+                value: function(model: any) {
+                    const instance = new (this as any)();
+                    instance.refresh(model);
+                    return instance;
+                },
+                writable: false,
+                configurable: false,
+            });
+        }
+
+        // ----------------------
+        // Inject Validatable-like behavior
+        // ----------------------
+        if (!Object.prototype.hasOwnProperty.call(target.prototype, 'validationErrors')) {
+            Object.defineProperty(target.prototype, 'validationErrors', {
+                value: function() {
+                    const validationRulesMap: Map<string, any[]> | undefined = (this.constructor as any).validationRulesMap;
+                    if (!validationRulesMap) return [];
+                    const errors: any[] = [];
+                    for (const [property, rules] of validationRulesMap) {
+                        for (const rule of rules) {
+                            const value = (this as any)[property];
+                            try {
+                                if (!rule.validate(value)) {
+                                    errors.push({ property, rule: rule.type, message: rule.message || `Ошибка валидации для поля ${property}` });
+                                }
+                            } catch { /* ignore invalid rule */ }
+                        }
+                    }
+                    return errors;
+                },
+                writable: false,
+                configurable: false,
+            });
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(target.prototype, 'isValid')) {
+            Object.defineProperty(target.prototype, 'isValid', {
+                value: function() { return this.validationErrors().length === 0; },
+                writable: false,
+                configurable: false,
+            });
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(target.prototype, 'validate')) {
+            Object.defineProperty(target.prototype, 'validate', {
+                value: function() { return this.isValid(); },
+                writable: false,
+                configurable: false,
+            });
+        }
+
+        const ensureRuleQuery = (fnName: string, picker: (rules: any[]) => any) => {
+            if (!Object.prototype.hasOwnProperty.call(target.prototype, fnName)) {
+                Object.defineProperty(target.prototype, fnName, {
+                    value: function(property: string) {
+                        const map: Map<string, any[]> | undefined = (this.constructor as any).validationRulesMap;
+                        if (!map) return fnName.startsWith('get') ? undefined : false;
+                        const rules: any[] = map.get(property) || [];
+                        return picker(rules);
+                    },
+                    writable: false,
+                    configurable: false,
+                });
+            }
+        };
+
+        ensureRuleQuery('isRequired', (rules) => rules.some((r: any) => r.type === 'required'));
+        ensureRuleQuery('isUnsigned', (rules) => rules.some((r: any) => r.type === 'unsigned'));
+        ensureRuleQuery('getMin', (rules) => { const r = rules.find((x: any) => x.type === 'min'); return r ? r.min : undefined; });
+        ensureRuleQuery('getMax', (rules) => { const r = rules.find((x: any) => x.type === 'max'); return r ? r.max : undefined; });
+        ensureRuleQuery('getMinLength', (rules) => { const r = rules.find((x: any) => x.type === 'min_length'); return r ? r.minLength : undefined; });
+        ensureRuleQuery('getMaxLength', (rules) => { const r = rules.find((x: any) => x.type === 'max_length'); return r ? r.maxLength : undefined; });
+
+        // ----------------------
+        // Inject Collectable-like behavior (collection, collect, createEmpty)
+        // ----------------------
+        const collectionCtor = (options.collectionClass as any)
+            || (target.collection as any)
+            || BaseResourceCollection;
+
+        if (!('collection' in target)) {
+            try {
+                Object.defineProperty(target, 'collection', {
+                    value: collectionCtor,
+                    writable: true,
+                    configurable: false,
+                });
+            } catch { /* ignore */ }
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(target, 'collect')) {
+            Object.defineProperty(target, 'collect', {
+                value: function(items: any[]) {
+                    const Ctor = (this as any).collection || collectionCtor;
+                    return new Ctor(items);
+                },
+                writable: false,
+                configurable: false,
+            });
+        }
+
+        if (!Object.prototype.hasOwnProperty.call(target, 'createEmpty')) {
+            Object.defineProperty(target, 'createEmpty', {
+                value: function() { return new (this as any)(); },
+                writable: false,
+                configurable: false,
+            });
+        }
 
         // static: Model.resource() → { path, key }
         Object.defineProperty(target, 'resource', {
@@ -173,7 +334,7 @@ export function Resource(configOrOptions: ResourceConfig | ResourceOptions) {
         // ----------------------
         // Статические CRUD-методы
         // ----------------------
-        if (isAllowed('fetchAll') && !('fetchAll' in target)) {
+        if (isAllowed('fetchAll') && !Object.prototype.hasOwnProperty.call(target, 'fetchAll')) {
             Object.defineProperty(target, 'fetchAll', {
                 value: async function () {
                     const { svcClass, svcInstance } = resolveService();
@@ -198,7 +359,7 @@ export function Resource(configOrOptions: ResourceConfig | ResourceOptions) {
             });
         }
 
-        if (isAllowed('fetchOne') && !('fetchOne' in target)) {
+        if (isAllowed('fetchOne') && !Object.prototype.hasOwnProperty.call(target, 'fetchOne')) {
             Object.defineProperty(target, 'fetchOne', {
                 value: async function (id: number | string) {
                     const { svcClass, svcInstance } = resolveService();
@@ -222,7 +383,7 @@ export function Resource(configOrOptions: ResourceConfig | ResourceOptions) {
             });
         }
 
-        if (isAllowed('store') && !('store' in target)) {
+        if (isAllowed('store') && !Object.prototype.hasOwnProperty.call(target, 'store')) {
             Object.defineProperty(target, 'store', {
                 value: async function (model: any) {
                     const { svcClass, svcInstance } = resolveService();
@@ -249,7 +410,7 @@ export function Resource(configOrOptions: ResourceConfig | ResourceOptions) {
         // ----------------------
         // Экземплярные CRUD-методы
         // ----------------------
-        if (isAllowed('update') && !('update' in target.prototype)) {
+        if (isAllowed('update') && !Object.prototype.hasOwnProperty.call(target.prototype, 'update')) {
             Object.defineProperty(target.prototype, 'update', {
                 value: async function () {
                     const { svcClass, svcInstance } = resolveService();
@@ -274,7 +435,7 @@ export function Resource(configOrOptions: ResourceConfig | ResourceOptions) {
             });
         }
 
-        if (isAllowed('destroy') && !('destroy' in target.prototype)) {
+        if (isAllowed('destroy') && !Object.prototype.hasOwnProperty.call(target.prototype, 'destroy')) {
             Object.defineProperty(target.prototype, 'destroy', {
                 value: async function () {
                     const { svcClass, svcInstance } = resolveService();

@@ -10,6 +10,7 @@ import {ru} from 'primelocale/js/ru.js';
 import ConfirmationService from 'primevue/confirmationservice';
 import ToastService from 'primevue/toastservice';
 import DialogService from 'primevue/dialogservice';
+import Tooltip from 'primevue/tooltip';
 import './style.css'
 import Chart from 'chart.js/auto';
 import zoomPlugin from 'chartjs-plugin-zoom';
@@ -20,6 +21,7 @@ Chart.register(zoomPlugin);
 const app = createApp(App)
 const pinia = createPinia()
 
+app.directive('tooltip', Tooltip);
 app.use(PrimeVue, {
     theme: {
         preset: Aura,

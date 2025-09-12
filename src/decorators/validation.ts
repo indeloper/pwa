@@ -89,6 +89,12 @@ export class ValidationRules {
       validate: (value) => {
         if (value === null || value === undefined) return false;
         if (typeof value === 'string') return value.trim().length > 0;
+        // Массивы
+        if (Array.isArray(value)) return value.length > 0;
+        // Коллекции с методами isEmpty()/count()
+        if (typeof (value as any).isEmpty === 'function') return !(value as any).isEmpty();
+        if (typeof (value as any).count === 'function') return (value as any).count() > 0;
+        // Объекты File-like: допускаем, что объект присутствует как значение
         return true;
       }
     };

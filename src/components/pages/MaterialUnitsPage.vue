@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import Dialog from 'primevue/dialog';
-import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
 import { storeToRefs } from 'pinia';
 import MaterialUnit from '../../models/MaterialUnit';
 import MaterialUnitForm from '@/components/forms/MaterialUnitForm.vue';
 import { useToastMessage } from '@/composables/useToastMessage';
 import { useConfirmMessage } from '@/composables/useConfirmMessage';
+import BaseResourceTable from '@/components/tables/BaseResourceTable.vue';
 
 const pageLoading = ref(false);
 
@@ -87,8 +87,9 @@ onMounted(() => {
 </script>
 
 <template>
-    <BaseResourceTable :models="units" :models-loading="pageLoading" :startAdd="handleStartAdd"
-        :startEdit="handleStartEdit" :startDelete="handleDeleteUnit" title="Единицы измерения" />
+
+    <BaseResourceTable :resources="units" :startEdit="handleStartEdit" :startDelete="handleDeleteUnit"
+        title="Единицы измерения" :startAdd="handleStartAdd" />
 
     <Dialog v-model:visible="isEditDialogOpen" header="Редактирование единицы измерения" modal>
         <MaterialUnitForm v-model:model="editableUnit" :loading="unitsLoading" @submit="handleUpdateUnit"

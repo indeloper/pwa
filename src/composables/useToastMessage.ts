@@ -53,6 +53,8 @@ export function useToastMessage() {
 
     const addErrorMessage = (message: string, options?: Partial<ToastOptions>) => error(message, options);
 
+    const addWarnMessage = (message: string, options?: Partial<ToastOptions>) => warn(message, options);
+
     return {
         // Базовые абстракции
         notify,
@@ -65,5 +67,6 @@ export function useToastMessage() {
         // Совместимость
         addSuccessMessage,
         addErrorMessage,
+        addWarnMessage,
     };
 }

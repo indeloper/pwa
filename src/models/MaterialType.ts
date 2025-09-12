@@ -1,51 +1,32 @@
+import BaseResource from "./BaseResource";
 import {
-    Model,
-    Transformable,
-    From,
-    To,
-    Validatable,
-    type IModel,
-    type ITransformable,
-    type IValidatable,
     Resource,
     Field,
-    Collectable,
+    MapField,
 } from "@/decorators";
-import { ModelsTransformStrategies as Strategy } from "@/enums";
-import type { ValidationError } from "@/decorators/validation";
-import type MaterialTypeCollection from "./collections/MaterialTypeCollection";
 import MaterialUnit from "./MaterialUnit";
 import { useMaterialTypeStore } from "@/stores/useMaterialTypeStore";
 import MaterialProperty from "./MaterialProperty";
 
-export interface IMaterialType extends IModel<IMaterialType>, ITransformable<IMaterialType>, IValidatable {
+export interface IMaterialType {
     id?: number;
-    label: string;
     name: string;
     description: string | null;
-    coefficient: number;
-    display_name: string;
+    unit_id: number;
+    accounting_by_main_value: boolean;
     material_property_ids: number[];
-    update(): Promise<this>;
-    destroy(): Promise<void>;
 }
 @Resource({
     path: 'https://erp.sk-gorod.com/api/v3/library/materials/material-types',
     key: 'id',
     store: () => useMaterialTypeStore()
 })
-@Model<any>()
-@Collectable({})
-@Transformable()
-@Validatable()
-class MaterialType {
+export default class MaterialType extends BaseResource implements IMaterialType {
 
-    @From(Strategy.API_RESPONSE, 'id')
-    @To(Strategy.API_REQUEST, 'id')
+    @MapField()
     id?: number;
 
-    @From(Strategy.API_RESPONSE, 'name')
-    @To(Strategy.API_REQUEST, 'name')
+    @MapField()
     @Field({
         label: 'Наименование',
         type: 'text',
@@ -54,23 +35,21 @@ class MaterialType {
     })
     name: string = '';
 
-    @From(Strategy.API_RESPONSE, 'unit_id')
-    @To(Strategy.API_REQUEST, 'unit_id')
+    @MapField()
     @Field({
         label: 'Единица измерения',
         type: 'select',
         placeholder: 'Укажите единицу измерения',
         required: true, 
         options: () => MaterialUnit.resourceStore.units.toArray().map((unit: MaterialUnit) => ({
-            label: unit.label,
+            label: `${unit.name} (${unit.label})`,
             value: unit.id,
         })),
         displayValue: (value: number) => MaterialUnit.resourceStore.units.findById(value)?.label || '',
     })
     unit_id: number = 0;
 
-    @From(Strategy.API_RESPONSE, 'accounting_by_main_value')
-    @To(Strategy.API_REQUEST, 'accounting_by_main_value')
+    @MapField()
     @Field({
         label: 'Учет по длине',
         type: 'boolean',
@@ -79,8 +58,7 @@ class MaterialType {
     })
     accounting_by_main_value: boolean = false;
 
-    @From(Strategy.API_RESPONSE, 'material_property_ids')
-    @To(Strategy.API_REQUEST, 'material_property_ids')
+    @MapField()
     @Field({
         label: 'Свойства материала',
         type: 'multiselect',
@@ -94,8 +72,7 @@ class MaterialType {
     material_property_ids: number[] = [];
 
 
-    @From(Strategy.API_RESPONSE, 'description')
-    @To(Strategy.API_REQUEST, 'description')
+    @MapField()
     @Field({
         label: 'Описание',
         type: 'longtext',
@@ -103,8 +80,7 @@ class MaterialType {
     })
     description: string | null = null;
 
-    @From(Strategy.API_RESPONSE, 'instruction')
-    @To(Strategy.API_REQUEST, 'instruction')
+    @MapField()
     @Field({
         label: 'Инструкция',
         type: 'longtext',
@@ -120,46 +96,3 @@ class MaterialType {
         return MaterialUnit.resourceStore.units.findById(this.unit_id);
     }
 }
-
-declare namespace MaterialType {
-    function collect(items: IMaterialType[]): MaterialTypeCollection;
-    function createEmpty(): MaterialType;
-    function clone(model: MaterialType): MaterialType;
-    function from(strategy: string | symbol, data: any): MaterialType;
-    function to(strategy: string | symbol): any;
-    function fetchAll(): Promise<MaterialTypeCollection>;
-    function fetchOne(id: number | string): Promise<MaterialType>;
-    function store(model: MaterialType): Promise<MaterialType>;
-    function validationErrors(): ValidationError[];
-    function isValid(): boolean;
-    function validate(): boolean;
-    const resourcePath: string;
-    const resourceKey: string;
-    const resourceStore: any;
-    function buildPath(id?: string | number): string;
-    function getFieldOption(fieldName: string, optionKey: string): any;
-    function getFieldDisplayValue(fieldName: string, value: any): string;
-}
-
-declare interface MaterialType {
-    to(strategy: string | symbol): any;
-    from(strategy: string | symbol, data: any): this;
-    refresh(other: Partial<MaterialType>): MaterialType;
-    validationErrors(): ValidationError[];
-    isValid(): boolean;
-    validate(): boolean;
-    isRequired(property: string): boolean;
-    isUnsigned(property: string): boolean;
-    getMin(property: string): number | undefined;
-    getMax(property: string): number | undefined;
-    getMinLength(property: string): number | undefined;
-    getMaxLength(property: string): number | undefined;
-    update(): Promise<MaterialType>;
-    destroy(): Promise<void>;
-    getResourcePath(): string;
-    getResourceKey(): string;
-    getFieldOption(fieldName: string, optionKey: string): any;
-    getFieldDisplayValue(fieldName: string, value: any): string;
-}
-
-export default MaterialType;

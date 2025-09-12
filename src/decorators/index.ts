@@ -1,4 +1,4 @@
-export { From, To, FromRelationship, FromRelationshipCollection, Transformable, type ITransformable } from './transform';
+export { From, To, FromRelationship, FromRelationshipCollection, Transformable, MapField, type ITransformable } from './transform';
 export { Model, type IModel } from './model';
 export { Validatable, Validate, ValidationRules, type IValidatable } from './validation';
 export { Description } from './description';
@@ -7,3 +7,4 @@ export { Field, type FieldSchema, type FieldType } from './field';
 export { Uuid } from './uuid';
 export { WithUuid } from './withUuid';
 export { Collectable, type CollectableOptions } from './collectable';
+export { TableColumn } from './tableColumn';

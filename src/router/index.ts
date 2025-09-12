@@ -5,7 +5,6 @@ import MaterialUnitsPage from '../components/pages/MaterialUnitsPage.vue'
 import MaterialTypesPage from '../components/pages/MaterialTypesPage.vue'
 import MaterialPropertiesPage from '../components/pages/MaterialPropertiesPage.vue'
 import MaterialBrandsPage from '../components/pages/MaterialBrandsPage.vue'
-import MaterialStandardsPage from '../components/pages/MaterialStandardsPage.vue'
 import TestPage from '@/components/pages/TestPage.vue'
 import WarehousesPage from '@/components/pages/WarehousesPage.vue'
 
@@ -67,21 +66,33 @@ const routes = [
     }
   },
   {
-    path: '/library/materials/standards',
-    name: 'library-materials-standards',
-    component: MaterialStandardsPage,
-    meta: {
-      requiresAuth: true
-    }
-  },
-  {
     path: '/library/materials/warehouses',
     name: 'library-materials-warehouses',
     component: WarehousesPage,
     meta: {
       requiresAuth: true
     }
-  } 
+  } ,
+  {
+    path: '/accounting/materials',
+    name: 'accounting-materials',
+    component: () => import('@/components/pages/MaterialsPage.vue'),
+    meta: {
+      requiresAuth: true
+    },
+    children: [
+      {
+        path: '',
+        name: 'accounting-materials-list',
+        component: () => import('@/components/pages/MaterialsListPage.vue'),
+      },
+      {
+        path: '/accounting/materials/moving/:type',
+        name: 'accounting-materials-moving',
+        component: () => import('@/components/pages/accounting/materials/operations/moving/MaterialMovePage.vue'),
+      }
+    ]
+  }
 ]
 
 const router = createRouter({

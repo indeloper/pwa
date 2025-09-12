@@ -72,6 +72,18 @@ const megaMenuItems = ref([
                 {
                     items: [
                         {
+                            label: 'Материалы',
+                            icon: 'pi pi-warehouse',
+                            subtext: 'Материалы',
+                            command: () => router.push({ name: 'accounting-materials' })
+                        }
+                    ]
+                }
+            ],
+            [
+                {
+                    items: [
+                        {
                             label: 'Склады',
                             icon: 'pi pi-warehouse',
                             subtext: 'Склады',
@@ -80,12 +92,6 @@ const megaMenuItems = ref([
                     ]
                 }
             ],
-            [
-            {
-                label: 'Материалы',
-                icon: 'pi pi-file-pdf',
-            }
-            ]
         ]
     },
     {

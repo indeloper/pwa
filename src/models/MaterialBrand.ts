@@ -1,49 +1,35 @@
+import BaseResource from "./BaseResource";
 import {
-    Model,
-    Transformable,
-    From,
-    To,
-    Validatable,
-    type IModel,
-    type ITransformable,
-    type IValidatable,
     Resource,
     Field,
-    Collectable,
+    MapField,
 } from "@/decorators";
-import { ModelsTransformStrategies as Strategy } from "@/enums";
-import type { ValidationError } from "@/decorators/validation";
-import type MaterialBrandCollection from "./collections/MaterialBrandCollection";
 import MaterialType from "./MaterialType";
 import { useMaterialBrandStore } from "@/stores/useMaterialBrandStore";
+import MaterialUnit from "./MaterialUnit";
+import { toString } from "lodash";
 
-export interface IMaterialBrand extends IModel<IMaterialBrand>, ITransformable<IMaterialBrand>, IValidatable {
+export interface IMaterialBrand {
     id?: number;
-    label: string;
     name: string;
     description: string | null;
-    coefficient: number;
-    display_name: string;
-    update(): Promise<this>;
-    destroy(): Promise<void>;
+    material_type_id: number;
+    weight: number;
+    price: number;
+    nomenclature_number: string;
+    alternate_brands: number[];
 }
 @Resource({
     path: 'https://erp.sk-gorod.com/api/v3/library/materials/material-brands',
     key: 'id',
     store: () => useMaterialBrandStore()
 })
-@Model<any>()
-@Collectable({})
-@Transformable()
-@Validatable()
-class MaterialBrand {
+export default class MaterialBrand extends BaseResource implements IMaterialBrand {
 
-    @From(Strategy.API_RESPONSE, 'id')
-    @To(Strategy.API_REQUEST, 'id')
+    @MapField()
     id?: number;
 
-    @From(Strategy.API_RESPONSE, 'name')
-    @To(Strategy.API_REQUEST, 'name')
+    @MapField()
     @Field({
         label: 'Наименование',
         type: 'text',
@@ -52,8 +38,7 @@ class MaterialBrand {
     })
     name: string = '';
 
-    @From(Strategy.API_RESPONSE, 'material_type_id')
-    @To(Strategy.API_REQUEST, 'material_type_id')
+    @MapField()
     @Field({
         label: 'Тип материала',
         type: 'select',
@@ -69,17 +54,16 @@ class MaterialBrand {
     })
     material_type_id: number = 0;
 
-    @From(Strategy.API_RESPONSE, 'weight')
-    @To(Strategy.API_REQUEST, 'weight')
+    @MapField()
     @Field({
         label: 'Вес',
         type: 'number',
         placeholder: 'Укажите вес',
+        displayValue: (value: number, data: MaterialBrand) => toString(value ? value / (data.unit?.divider || 1) : null),
     })
     weight: number = 0;
 
-    @From(Strategy.API_RESPONSE, 'price')
-    @To(Strategy.API_REQUEST, 'price')
+    @MapField()
     @Field({
         label: 'Цена',
         type: 'number',
@@ -87,8 +71,7 @@ class MaterialBrand {
     })
     price: number = 0;
 
-    @From(Strategy.API_RESPONSE, 'nomenclature_number')
-    @To(Strategy.API_REQUEST, 'nomenclature_number')
+    @MapField()
     @Field({
         label: 'Номенклатура',
         type: 'text',
@@ -108,10 +91,9 @@ class MaterialBrand {
             }));
     }
 
-    @From(Strategy.API_RESPONSE, 'alternate_brands')
-    @To(Strategy.API_REQUEST, 'alternate_brands')
+    @MapField()
     @Field({
-        label: 'Альтернативы',
+        label: 'Комбинация / Замена',
         type: 'multiselect',
         placeholder: 'Укажите альтернативные марки',
         description: 'Фильтрация по типу материала в работе',
@@ -119,14 +101,13 @@ class MaterialBrand {
             label: brand.name,
             value: brand.id!,
         }))} ,
-        displayValue: (value: number[]) => value && value.length > 0 ? MaterialBrand.resourceStore.brands.whereIds(value)?.toArray().map((brand: MaterialBrand) => brand.name) : '',
+        displayValue: (value: number[]) => value && value.length > 0 ? MaterialBrand.resourceStore.brands.whereIds(value)?.toArray().map((brand: MaterialBrand) => brand.name).join(', ') : '',
         filterValue: (value: number[]) => value || [], // Для правильной фильтрации массивов
     })
     alternate_brands: number[] = [];
 
 
-    @From(Strategy.API_RESPONSE, 'description')
-    @To(Strategy.API_REQUEST, 'description')
+    @MapField()
     @Field({
         label: 'Описание',
         type: 'longtext',
@@ -139,48 +120,9 @@ class MaterialBrand {
         return MaterialType.resourceStore.types.findById(this.material_type_id);
     }
 
+    get unit(): MaterialUnit | null {
+        return this.material_type?.unit || null;
+    }
+
 
 }
-
-declare namespace MaterialBrand {
-    function collect(items: IMaterialBrand[]): MaterialBrandCollection;
-    function createEmpty(): MaterialBrand;
-    function clone(model: MaterialBrand): MaterialBrand;
-    function from(strategy: string | symbol, data: any): MaterialBrand;
-    function to(strategy: string | symbol): any;
-    function fetchAll(): Promise<MaterialBrandCollection>;
-    function fetchOne(id: number | string): Promise<MaterialBrand>;
-    function store(model: MaterialBrand): Promise<MaterialBrand>;
-    function validationErrors(): ValidationError[];
-    function isValid(): boolean;
-    function validate(): boolean;
-    const resourcePath: string;
-    const resourceKey: string;
-    const resourceStore: any;
-    function buildPath(id?: string | number): string;
-    function getFieldOption(fieldName: string, optionKey: string): any;
-    function getFieldDisplayValue(fieldName: string, value: any): string;
-}
-
-declare interface MaterialBrand {
-    to(strategy: string | symbol): any;
-    from(strategy: string | symbol, data: any): this;
-    refresh(other: Partial<MaterialBrand>): MaterialBrand;
-    validationErrors(): ValidationError[];
-    isValid(): boolean;
-    validate(): boolean;
-    isRequired(property: string): boolean;
-    isUnsigned(property: string): boolean;
-    getMin(property: string): number | undefined;
-    getMax(property: string): number | undefined;
-    getMinLength(property: string): number | undefined;
-    getMaxLength(property: string): number | undefined;
-    update(): Promise<MaterialBrand>;
-    destroy(): Promise<void>;
-    getResourcePath(): string;
-    getResourceKey(): string;
-    getFieldOption(fieldName: string, optionKey: string): any;
-    getFieldDisplayValue(fieldName: string, value: any): string;
-}
-
-export default MaterialBrand;

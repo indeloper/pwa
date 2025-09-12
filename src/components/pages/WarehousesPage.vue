@@ -87,8 +87,8 @@ onMounted(() => {
 </script>
 
 <template>
-    <BaseResourceTable :models="warehouses" :models-loading="pageLoading" :startAdd="handleStartAdd"
-        :startEdit="handleStartEdit" :startDelete="handleDeleteWarehouse" title="Склады" />
+    <BaseResourceTable :resources="warehouses" :startEdit="handleStartEdit" :startDelete="handleDeleteWarehouse"
+        title="Склады" :startAdd="handleStartAdd" />
 
     <Dialog v-model:visible="isEditDialogOpen" header="Редактирование склада" modal>
         <WarehouseForm v-model:model="editableWarehouse" :loading="warehousesLoading" @submit="handleUpdateWarehouse"

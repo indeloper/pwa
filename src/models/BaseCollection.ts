@@ -13,8 +13,17 @@ import {
     isEmpty as lodashIsEmpty
 } from 'lodash';
 
-export default class BaseCollection<T extends IModel<T>> {
-    protected items: T[] = [];
+export interface IBaseCollection<T> {
+    items: T[];
+    all(): T[];
+    findById(id: number): T | undefined;
+    whereIds(ids: number[]): BaseCollection<T>;
+    findByUuid(uuid: string): T | undefined;
+    count(): number;
+}
+
+export default class BaseCollection<T> implements IBaseCollection<T> {
+    items: T[] = [];
 
     constructor(items: T[] = []) {
         this.items = items;
@@ -238,6 +247,10 @@ export default class BaseCollection<T extends IModel<T>> {
      */
     findIndex(predicate: (item: T, index: number) => boolean): number {
         return findIndex(this.items, predicate);
+    }
+
+    toOptions({ labelKey = 'name', valueKey = 'id' }: { labelKey?: string, valueKey?: string } = {}): { label: string, value: string }[] {
+        return this.items.map(item => ({ label: item[labelKey], value: item[valueKey] }));
     }
 
     /**

@@ -1,5 +1,6 @@
 import 'reflect-metadata';
 import { get, set } from 'lodash';
+import { ModelsTransformStrategies as Strategy } from '@/enums';
 
 export interface ITransformable<T> {
     from(strategy: string | symbol, data: any): T;
@@ -122,7 +123,7 @@ export function Transformable() {
         };
         
         // Обычный метод - применяет трансформацию к существующему экземпляру
-        target.prototype.from = function(strategy: string | symbol, data: any): this {
+        target.prototype.from = function(strategy: string | symbol, data: any) {
             const fromMap = (this.constructor as any).fromMap;
             const fromRelationshipCollectionMap = (this.constructor as any).fromRelationshipCollectionMap;
             const fromRelationshipMap = (this.constructor as any).fromRelationshipMap;
@@ -219,3 +220,78 @@ export function Transformable() {
         };
     };
 };
+
+// -----------------------------
+// Unified decorator for From/To
+// -----------------------------
+
+export type StrategyKey = string | symbol;
+
+export type FromPath = string | ((data: any) => any);
+export type ToPath = string | ((value: any) => any);
+
+export interface MapFieldConfig {
+    from?: Record<StrategyKey, FromPath> | Array<[StrategyKey, FromPath]>;
+    to?: Record<StrategyKey, ToPath> | Array<[StrategyKey, ToPath]>;
+}
+
+function ensureMap(container: any, key: string): Map<string | symbol, any> {
+    if (!container[key]) {
+        container[key] = new Map();
+    }
+    return container[key];
+}
+
+function applyRecordOrArray<T extends string | symbol, V>(
+    targetMap: Map<T, V>,
+    input: Record<T, V> | Array<[T, V]>
+) {
+    if (Array.isArray(input)) {
+        for (const [strategy, path] of input) {
+            targetMap.set(strategy, path);
+        }
+    } else if (input && typeof input === 'object') {
+        for (const strategy of Object.keys(input) as T[]) {
+            targetMap.set(strategy, (input as Record<T, V>)[strategy]);
+        }
+    }
+}
+
+export function MapField(config?: MapFieldConfig | true) {
+    return function (target: any, propertyKey: string) {
+        const hasConfigObject = !!config && config !== true && typeof config === 'object';
+        const hasFrom = hasConfigObject && !!(config as MapFieldConfig).from;
+        const hasTo = hasConfigObject && !!(config as MapFieldConfig).to;
+
+        // Default mapping if decorator is empty or a side is not provided
+        if (!hasFrom) {
+            const fromContainer = ensureMap(target.constructor, 'fromMap');
+            if (!fromContainer.has(propertyKey)) {
+                fromContainer.set(propertyKey, new Map());
+            }
+            const propertyFromMap: Map<StrategyKey, FromPath> = fromContainer.get(propertyKey);
+            // Default to API_RESPONSE -> same property name
+            if (!propertyFromMap.has(Strategy.API_RESPONSE)) {
+                propertyFromMap.set(Strategy.API_RESPONSE, propertyKey);
+            }
+            if (hasFrom) {
+                applyRecordOrArray(propertyFromMap as any, (config as MapFieldConfig).from as any);
+            }
+        }
+
+        if (!hasTo) {
+            const toContainer = ensureMap(target.constructor, 'toMap');
+            if (!toContainer.has(propertyKey)) {
+                toContainer.set(propertyKey, new Map());
+            }
+            const propertyToMap: Map<StrategyKey, ToPath> = toContainer.get(propertyKey);
+            // Default to API_REQUEST -> same property name
+            if (!propertyToMap.has(Strategy.API_REQUEST)) {
+                propertyToMap.set(Strategy.API_REQUEST, propertyKey);
+            }
+            if (hasTo) {
+                applyRecordOrArray(propertyToMap as any, (config as MapFieldConfig).to as any);
+            }
+        }
+    };
+}

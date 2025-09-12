@@ -1,25 +1,28 @@
 import { ValidationRules, ValidationRuleType, type ValidationRule } from './validation';
 
-// Поля формы: метаданные для автогенерации UI
-// Пример использования:
-//   @Field({ label: 'Имя', type: 'text', description: 'Подсказка', validationRules: [ValidationRules.required()] })
-//   name: string = '';
+export type FieldType = 'files' | 'file' | 'text' | 'textarea' | 'longtext' | 'number' | 'boolean' | 'select' | 'multiselect' | 'date' | 'datetime' | 'checkbox' | 'radio';
 
-export type FieldType = 'text' | 'textarea' | 'longtext' | 'number' | 'boolean' | 'select' | 'multiselect' | 'date' | 'datetime' | 'checkbox' | 'radio';
-
+//TODO добавить callback для подтерждения сохранения пустого поля
 export interface FieldOptions {
-    label?: string;
-    hidden?: boolean;
-    type?: FieldType;
+    label?: string; // текст над полем
+    hidden?: boolean; // скрыть поле
+    type?: FieldType; // тип поля
     source?: any;            // источник данных (например, список опций) — задается извне формой/стором
-    multiple?: boolean;
-    placeholder?: string;
+    placeholder?: string; // текст подсказки
     required?: boolean;      // шорткат для обязательности, без явного импорта ValidationRules
     description?: string;    // текст подсказки
     validationRules?: ValidationRule[]; // правила валидации (интегрируются с Validatable)
     options?: { label: string; value: any }[] | ((context?: any) => { label: string; value: any }[]);
-    displayValue?: (value: any) => string; // функция для отображения значения
+    displayValue?: (value: any, data?: any) => string | null | undefined; // функция для отображения значения (value - значение поля, data - весь объект)
     filterValue?: (value: any) => any; // функция для получения значения для фильтрации
+    editable?: boolean | ((data?: any) => boolean);      // возможность редактирования поля в таблице
+    // для типа file
+    accept?: string | undefined; // e.g. "image/*,.pdf"
+    multiple?: boolean; // множественный выбор (для типа file)
+    showPreview?: boolean; // показать превью файла
+    // для подтверждения сохранения пустого поля
+    confirmIfEmpty?: boolean; // запросить подтверждение у пользователя
+    shouldJustifyEmptyFields?: boolean; // требовать указать причину (будет отображено дополнительное текстовое поле)
 }
 
 const FIELDS_META = Symbol('fieldsMeta');
@@ -114,13 +117,23 @@ export function Field(options: FieldOptions) {
                 configurable: true
             });
 
+            // Метод для проверки возможности редактирования поля
+            Object.defineProperty(target, 'isFieldEditable', {
+                value: function (fieldName: string): boolean {
+                    const fieldMeta = (this.constructor as any)[FIELDS_META]?.[fieldName];
+                    return fieldMeta?.editable === true;
+                },
+                enumerable: true,
+                configurable: true
+            });
+
             // Метод для получения displayValue функции
             Object.defineProperty(target, 'getFieldDisplayValue', {
-                value: function (fieldName: string, value: any): string {
+                value: function (fieldName: string, value: any, data?: any): string {
                     const fieldMeta = (this.constructor as any)[FIELDS_META]?.[fieldName];
                     const displayValueFn = fieldMeta?.['displayValue'];
                     if (typeof displayValueFn === 'function') {
-                        return displayValueFn(value);
+                        return displayValueFn(value, data || this);
                     }
                     // Fallback: возвращаем строковое представление значения
                     return value?.toString() || '';
@@ -168,13 +181,23 @@ export function Field(options: FieldOptions) {
                 configurable: true
             });
 
+            // Статический метод для проверки возможности редактирования поля
+            Object.defineProperty(ctor, 'isFieldEditable', {
+                value: function (fieldName: string): boolean {
+                    const fieldMeta = (this as any)[FIELDS_META]?.[fieldName];
+                    return fieldMeta?.editable === true;
+                },
+                enumerable: true,
+                configurable: true
+            });
+
             // Статический метод для получения displayValue функции
             Object.defineProperty(ctor, 'getFieldDisplayValue', {
-                value: function (fieldName: string, value: any): string {
+                value: function (fieldName: string, value: any, data?: any): string {
                     const fieldMeta = (this as any)[FIELDS_META]?.[fieldName];
                     const displayValueFn = fieldMeta?.['displayValue'];
                     if (typeof displayValueFn === 'function') {
-                        return displayValueFn(value);
+                        return displayValueFn(value, data);
                     }
                     // Fallback: возвращаем строковое представление значения
                     return value?.toString() || '';

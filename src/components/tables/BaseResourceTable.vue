@@ -1,556 +1,170 @@
 <script setup lang="ts">
-import { isMobile } from '@/helpers';
-import { computed, ref, watch, onMounted } from 'vue';
-
+import type BaseResourceCollection from '@/models/BaseResourceCollection';
+import { computed, ref, watch } from 'vue';
 import DataTable from 'primevue/datatable';
-import MultiSelect from 'primevue/multiselect';
-import Select from 'primevue/select';
+import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
-import Column from 'primevue/column';
-import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
-import type BaseResourceCollection from '@/models/BaseResourceCollection';
-import type { FilterSettings } from '@/types/table';
-import { FilterMatchMode } from '@primevue/core/api';
+import { Pen } from '@vicons/fa';
 import _ from 'lodash';
-import { Plus } from '@vicons/fa';
+import Button from 'primevue/button';
+import { FilterMatchMode, FilterOperator } from '@primevue/core/api';
+import Select from 'primevue/select';
 
 const props = defineProps<{
-    models: BaseResourceCollection<any>;
-    title?: string;
-    showMassDelete?: boolean;
-    startMassDelete?: (models: any[]) => void;
+    resources: BaseResourceCollection<any>;
+    editable?: boolean;
+    startEdit?: (data: any) => void;
+    startDelete?: (data: any) => void;
     startAdd?: () => void;
-    startEdit?: (model: any) => void;
-    startDelete?: (model: any) => void;
-}>();
+    title?: string;
+    removeSort?: boolean;
+    removeFilters?: boolean;
+}>()
 
-const modelsArray = ref<any[]>([]);
-const selectedModels = ref<any[]>([]);
+const filters = ref({})
 
-const filteredModelsArray = computed<any[]>(() => {
+const filteredResources = computed(() => {
+    return props.resources.toArray();
+})
 
-    return modelsArray.value;
+const columns = computed(() => {
+    return props.resources.first()?.constructor.tableColumns ?? new Map();
+})
 
-    if (!globalSearchString.value || globalSearchString.value.trim() === '') {
-        return modelsArray.value;
-    }
-
-    const searchTerm = globalSearchString.value.toLowerCase().trim();
-    const textFields = getGlobalFilterFields();
-
-    return modelsArray.value.filter(item => {
-        // Если есть текстовые поля, ищем только по ним
-        if (textFields.length > 0) {
-            return textFields.some(fieldName => {
-                const fieldValue = getFieldValueForSearch(item, fieldName);
-                if (!fieldValue) return false;
-
-                const stringValue = fieldValue.toString().toLowerCase();
-                return stringValue.includes(searchTerm);
-            });
-        }
-
-        // Если текстовых полей нет, ищем по всем полям
-        return Object.keys(columns.value).some(fieldName => {
-            const fieldValue = getFieldValueForSearch(item, fieldName);
-            if (!fieldValue) return false;
-
-            const stringValue = fieldValue.toString().toLowerCase();
-            return stringValue.includes(searchTerm);
-        });
-    });
-});
-
-const columnsInitialazed = computed<boolean>(() => {
-    return props.models.first()?.fields !== undefined;
-});
-
-const columns = computed<Record<string, any>>(() => {
-    return props.models.first()?.fields || {};
-});
-
-const filters = ref<Record<string, FilterSettings>>({});
-const globalSearchString = ref<string>('');
-
-// Флаг готовности фильтров: все колонки имеют записи в filters
-const filtersReady = computed<boolean>(() => {
-    const cols = columns.value || {};
-    const colKeys = Object.keys(cols);
-    if (colKeys.length === 0) return false;
-    if (!filters.value || !('global' in filters.value)) return false;
-    return colKeys.every(k => !!filters.value[k] && 'value' in (filters.value[k] as any));
-});
-
-// Для диалога длинного текста
-const longtextDialogVisible = ref(false);
-const longtextDialogTitle = ref('');
-const longtextDialogContent = ref('');
-
-const initFilters = () => {
-    filters.value['global'] = { value: null, matchMode: FilterMatchMode.STARTS_WITH };
-
-    const fields = props.models.first()?.fields || {};
-    Object.keys(fields).forEach((key: string) => {
-        const fieldType = fields[key]?.type;
-        let matchMode = FilterMatchMode.STARTS_WITH;
-
-        // Определяем matchMode в зависимости от типа поля
-        switch (fieldType) {
-            case 'number':
-            case 'integer':
-            case 'decimal':
-            case 'float':
-                matchMode = FilterMatchMode.EQUALS;
-                break;
-            case 'boolean':
-                matchMode = FilterMatchMode.EQUALS;
-                break;
-            case 'date':
-            case 'datetime':
-                matchMode = FilterMatchMode.DATE_IS;
-                break;
-            case 'select':
-                matchMode = FilterMatchMode.EQUALS;
-                break;
-            case 'multiselect':
-                matchMode = FilterMatchMode.CUSTOM;
-                break;
-            case 'longtext':
-            case 'textarea':
-                matchMode = FilterMatchMode.CONTAINS;
-                break;
-            case 'text':
-            case 'string':
-            default:
-                matchMode = FilterMatchMode.STARTS_WITH;
-                break;
-        }
-
-        filters.value[key] = { value: null, matchMode: matchMode };
-    });
+const onCellEditComplete = (event: any) => {
+    let { data, newValue, field } = event;
+    data[field] = newValue
 }
 
-const getFilterOptions = (fieldName: string) => {
-    const model = props.models.first();
-    if (!model) return [];
-
-    // Сначала пытаемся получить опции из метаданных модели
-    if (typeof model.getFieldOption === 'function') {
-        const metaOptions = model.getFieldOption(fieldName, 'options');
-        if (Array.isArray(metaOptions)) {
-            return metaOptions.map((opt: any) => {
-                const isPrimitive = opt === null || ['string', 'number', 'boolean'].includes(typeof opt);
-                const value = isPrimitive ? opt : (opt.value ?? opt.id ?? opt.key ?? opt);
-                const label = isPrimitive ? String(opt ?? '') : (opt.label ?? String(value ?? ''));
-                return { label: String(label ?? ''), value };
-            });
-        }
-    }
-
-    // Если у колонки определён метод options(), используем его
-    const col = columns.value[fieldName];
-    if (col && typeof col.options === 'function') {
-        const opts = col.options();
-        if (Array.isArray(opts)) {
-            return opts.map((opt: any) => {
-                const isPrimitive = opt === null || ['string', 'number', 'boolean'].includes(typeof opt);
-                const value = isPrimitive ? opt : (opt.value ?? opt.id ?? opt.key ?? opt);
-                const label = isPrimitive ? String(opt ?? '') : (opt.label ?? String(value ?? ''));
-                return { label: String(label ?? ''), value };
-            });
-        }
-    }
-
-    // Итоговый fallback: собрать уникальные значения из данных
-    const values = _.uniq(
-        props.models.toArray()
-            .map((m: any) => m[fieldName])
-            .flat()
-    ).filter((v: any) => v !== null && v !== undefined && v !== '');
-
-    return values.map((value: any) => ({
-        label: String(value ?? ''),
-        value
-    }));
+const handleStartEdit = (data: any) => {
+    props.startEdit?.(data);
 }
 
-// Кастомная функция фильтра для полей, где значение в строке может быть массивом (multiselect)
-const arrayIntersects = (cellValue: any, filterValue: any): boolean => {
-    const selected = Array.isArray(filterValue)
-        ? filterValue
-        : (filterValue !== null && filterValue !== undefined)
-            ? [filterValue]
-            : [];
-
-    // Пустой фильтр ничего не отфильтровывает
-    if (selected.length === 0) return true;
-
-    const cell = Array.isArray(cellValue)
-        ? cellValue
-        : (cellValue !== null && cellValue !== undefined)
-            ? [cellValue]
-            : [];
-
-    // Совпадение по хотя бы одному значению
-    return selected.some((v) => cell.includes(v));
-}
-
-const getColumnDataType = (fieldType: string): string => {
-    switch (fieldType) {
-        case 'number':
-        case 'integer':
-            return 'numeric';
-        case 'decimal':
-        case 'float':
-            return 'numeric';
-        case 'boolean':
-            return 'boolean';
-        case 'date':
-            return 'date';
-        case 'datetime':
-            return 'date';
-        case 'select':
-            return 'text'; // Select options are typically strings
-        case 'multiselect':
-            return 'text'; // MultiSelect values can be arrays, but we treat as text for sorting
-        case 'text':
-        case 'string':
-            return 'text';
-        case 'longtext':
-        case 'textarea':
-            return 'text';
-        default:
-            return 'text';
-    }
-}
-
-const getGlobalFilterFields = (): string[] => {
-    return Object.keys(columns.value).filter(fieldName => {
-        const fieldType = columns.value[fieldName].type;
-        return ['text', 'string', 'longtext', 'textarea'].includes(fieldType);
-    });
-}
-
-const getMobileDisplayValue = (data: any): string => {
-    const textFields = getGlobalFilterFields();
-    if (textFields.length === 0) return JSON.stringify(data);
-
-    // Собираем значения из всех текстовых полей
-    const values = textFields.map(fieldName => {
-        const value = data[fieldName];
-        if (Array.isArray(value)) {
-            return value.join(', ');
-        }
-        return value?.toString() || '';
-    }).filter(val => val.trim() !== '');
-
-    return values.join(' | ');
-}
-
-const getFieldValueForSearch = (data: any, fieldName: string): string => {
-    const value = data[fieldName];
-    const column = columns.value[fieldName];
-
-    if (value === null || value === undefined) return '';
-
-    // Сначала пробуем использовать column.displayValue если он есть
-    if (column?.displayValue && typeof column.displayValue === 'function') {
-        const displayValue = column.displayValue(value);
-        if (displayValue && displayValue !== '-') {
-            return displayValue;
-        }
-    }
-
-    // Если у модели есть метод getFieldDisplayValue, используем его для получения отображаемого значения
-    if (typeof data.getFieldDisplayValue === 'function') {
-        const displayValue = data.getFieldDisplayValue(fieldName, value);
-        if (displayValue && displayValue !== '-') {
-            return displayValue;
-        }
-    }
-
-    // Для массивов (multiselect) объединяем значения
-    if (Array.isArray(value)) {
-        return value.join(' ');
-    }
-
-    // Для остальных типов возвращаем строковое представление
-    return value.toString();
-}
-
-const getFieldDisplayValue = (data: any, fieldName: string, column: any): string => {
-    const value = data[fieldName];
-
-    if (value === null || value === undefined) return '';
-
-    // Сначала пробуем использовать column.displayValue если он есть
-    if (column.displayValue && typeof column.displayValue === 'function') {
-        return column.displayValue(value);
-    }
-
-    // Если у модели есть метод getFieldDisplayValue, используем его
-    if (typeof data.getFieldDisplayValue === 'function') {
-        return data.getFieldDisplayValue(fieldName, value);
-    }
-
-    // Иначе форматируем в зависимости от типа
-    switch (column.type) {
-        case 'boolean':
-            return value === true ? 'Да' : value === false ? 'Нет' : '-';
-        case 'number':
-        case 'integer':
-            return value.toString();
-        case 'decimal':
-        case 'float':
-            return Number(value).toFixed(2);
-        case 'date':
-            return new Date(value).toLocaleDateString('ru-RU');
-        case 'datetime':
-            return new Date(value).toLocaleString('ru-RU');
-        case 'multiselect':
-            return Array.isArray(value) ? value.join(', ') : value?.toString() || '-';
-        default:
-            return value?.toString() || '-';
-    }
-}
-
-const showLongtextDialog = (title: string, content: string) => {
-    longtextDialogTitle.value = title;
-    longtextDialogContent.value = content;
-    longtextDialogVisible.value = true;
-}
-
-const hideLongtextDialog = () => {
-    longtextDialogVisible.value = false;
-}
-
-const handleMassDelete = () => {
-    props.startMassDelete?.(selectedModels.value);
+const handleStartDelete = (data: any) => {
+    props.startDelete?.(data);
 }
 
 const handleStartAdd = () => {
     props.startAdd?.();
 }
 
-const handleStartEdit = (model: any) => {
-    props.startEdit?.(model);
+const initFilters = () => {
+    const result: Record<string, any> = {
+        global: { value: null, matchMode: FilterMatchMode.CONTAINS }
+    };
+    for (const [key, column] of columns.value) {
+        if (column.type === 'number' || column.type === 'integer') {
+            result[key] = { operator: FilterOperator.AND, constraints: [{ value: null, matchMode: FilterMatchMode.EQUALS }] };
+        } else {
+            result[key] = { value: null, matchMode: FilterMatchMode.CONTAINS };
+        }
+    }
+    filters.value = result;
 }
 
-const handleStartDelete = (model: any) => {
-    props.startDelete?.(model);
+watch(
+    () => columns.value,
+    () => initFilters(),
+    { deep: true }
+)
+
+const getDataType = (column: any) => {
+    switch (column.type) {
+        case 'number':
+        case 'integer':
+            return 'numeric';
+        case 'decimal':
+        case 'float':
+            return 'numeric';
+        case 'select':
+            return 'text';
+    }
+    return 'text';
 }
 
-// Инициализация и обновление данных
-const initializeData = () => {
-    if (!props.models || !props.models.first || !props.models.first()) {
-        modelsArray.value = [];
-        return;
-    }
-    initFilters();
-    modelsArray.value = props.models.toArray();
-}
-
-// Следим за инициализацией колонок
-watch(columnsInitialazed, () => {
-    if (columnsInitialazed.value) {
-        initializeData();
-    }
-});
-
-// Переинициализируем фильтры при изменении набора колонок
-watch(() => Object.keys(columns.value), () => {
-    if (columnsInitialazed.value) {
-        initFilters();
-    }
-});
-
-// Инициализируем при монтировании, если колонки уже есть
-onMounted(() => {
-    if (columnsInitialazed.value) {
-        initializeData();
-    }
-});
-
-// Следим за изменениями в props.models
-watch(() => props.models, () => {
-    // При смене страницы/маршрута models может быть временно undefined
-    modelsArray.value = props.models ? props.models.toArray() : [];
-}, { deep: true });
 </script>
 
 <template>
-    <DataTable v-if="columnsInitialazed && filtersReady" :value="filteredModelsArray" size="small" filterDisplay="row" v-model:filters="filters" dataKey="uuid"
-        row-hover>
-
-        <template #header>
-            <div class="flex justify-between items-center">
-                <h1 class="text-2xl font-bold">{{ title ?? 'Список' }}</h1>
-                <div class="flex gap-2">
-                    <template v-if="showMassDelete && selectedModels.length > 0">
-                        <Button icon="pi pi-trash" label="Удалить выбранные" @click="handleMassDelete" />
-                    </template>
-                    <template v-if="startAdd">
-                        <Button @click="handleStartAdd" size="small">
-                            <Plus class="w-4 h-4" />
-                            <p class="hidden md:block">Добавить</p>
-                        </Button>
-                    </template>
-                </div>
-            </div>
-        </template>
-
-        <!-- Десктопная версия -->
-        <template v-if="!isMobile()">
-            <Column v-for="(column, name) in columns" :key="name" :field="name" :header="column.label"
-                :dataType="getColumnDataType(column.type)" :sortable="column.sortable ?? true"
-                :style="column.style || ''" :class="column.class || ''" :frozen="column.frozen ?? false"
-                :filterFunction="column.type === 'multiselect' ? arrayIntersects : undefined">
-                <template #filter="{ filterModel, filterCallback }">
-                    <template v-if="filterModel">
-                        <!-- Числовые типы -->
-                        <template v-if="column.type === 'number' || column.type === 'integer'">
-                            <InputNumber v-model="filterModel.value" size="small" fluid placeholder="Поиск по числу"
-                                @input="filterCallback()" />
-                        </template>
-
-                        <!-- Десятичные числа -->
-                        <template v-else-if="column.type === 'decimal' || column.type === 'float'">
-                            <InputNumber v-model="filterModel.value" size="small" fluid :minFractionDigits="2"
-                                :maxFractionDigits="2" placeholder="Поиск по числу" @input="filterCallback()" />
-                        </template>
-
-                        <!-- Логический тип -->
-                        <template v-else-if="column.type === 'boolean'">
-                            <Select v-model="filterModel.value" size="small" fluid placeholder="Все" :options="[
-                                { label: 'Все', value: null },
-                                { label: 'Да', value: true },
-                                { label: 'Нет', value: false }
-                            ]" option-label="label" option-value="value" @change="filterCallback()" />
-                        </template>
-
-                        <!-- Дата -->
-                        <template v-else-if="column.type === 'date'">
-                            <input v-model="filterModel.value" type="date" class="p-inputtext p-inputtext-sm p-fluid"
-                                @change="filterCallback()" />
-                        </template>
-
-                        <!-- Дата и время -->
-                        <template v-else-if="column.type === 'datetime'">
-                            <input v-model="filterModel.value" type="datetime-local"
-                                class="p-inputtext p-inputtext-sm p-fluid" @change="filterCallback()" />
-                        </template>
-
-                        <!-- Select с опциями -->
-                        <template v-else-if="column.type === 'select'">
-                            <Select v-model="filterModel.value" size="small" fluid placeholder="Все" :options="[
-                                { label: 'Все', value: null },
-                                ...getFilterOptions(name)
-                            ]" option-label="label" option-value="value" @change="filterCallback()" />
-                        </template>
-
-                        <!-- MultiSelect с опциями -->
-                        <template v-else-if="column.type === 'multiselect'">
-                            <MultiSelect v-model="filterModel.value" size="small" fluid placeholder="Все"
-                                :options="getFilterOptions(name)" option-label="label" option-value="value"
-                                @change="filterCallback()" />
-                        </template>
-
-                        <!-- Текстовые поля -->
-                        <template v-else-if="column.type === 'longtext' || column.type === 'textarea'">
-                            <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
-                                @input="filterCallback()" />
-                        </template>
-
-                        <!-- Обычный текст -->
-                        <template v-else-if="column.type === 'text' || column.type === 'string'">
-                            <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
-                                @input="filterCallback()" />
-                        </template>
-
-                        <!-- По умолчанию -->
-                        <template v-else>
-                            <InputText v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
-                                @input="filterCallback()" />
-                        </template>
-                    </template>
-                </template>
-                <template #body="{ data }">
-                    <!-- Используем единую функцию для отображения -->
-                    <template v-if="column.type === 'longtext' && data[name]">
-                        <Button size="small" text @click="showLongtextDialog(column.label, data[name])"
-                            icon="pi pi-eye" />
-                    </template>
-                    <template v-else>
-                        <template v-if="Array.isArray(getFieldDisplayValue(data, name, column))">
-                            {{ getFieldDisplayValue(data, name, column).join(', ') }}
-                        </template>
-                        <template v-else>
-                            {{ getFieldDisplayValue(data, name, column) }}
-                        </template>
-                    </template>
-                </template>
-            </Column>
-            <Column class="w-[10%]">
-                <template #body="{ data }">
-                    <div class="flex gap-2">
-                        <Button v-if="startEdit" size="small" text @click="handleStartEdit(data)" icon="pi pi-pencil" />
-                        <Button v-if="startDelete" severity="danger" size="small" text @click="handleStartDelete(data)"
-                            icon="pi pi-trash" />
+    <template v-if="!resources.isEmpty()">
+        <template v-if="columns && columns.size > 0">
+            <DataTable v-model:filters="filters" :filterDisplay="removeFilters ? 'none' : 'menu'"
+                :value="filteredResources" size="small" :removable-sort="!removeSort" row-hover
+                :editMode="editable ? 'cell' : undefined" @cell-edit-complete="onCellEditComplete" :pt="{
+                    column: {
+                        bodycell: ({ state }: { state: any }) => ({
+                            class: [{ '!py-0': state['d_editing'] }]
+                        })
+                    },
+                    table: { style: 'table-layout: fixed;' }
+                }" scrollable scrollHeight="flex" :virtualScrollerOptions="{ itemSize: 48 }">
+                <template #header>
+                    <div class="flex justify-between items-center">
+                        <h1 class="text-2xl font-bold">{{ title }}</h1>
+                        <Button v-if="startAdd" size="small" @click="handleStartAdd" icon="pi pi-plus" />
                     </div>
                 </template>
-            </Column>
-        </template>
+                <template v-for="[key, column] in columns" :key="key">
+                    <Column :field="key" :header="column.header" :sortable="(!removeSort && column.sortable) ?? true"
+                        :dataType="getDataType(column)" class="!h-[48px]">
+                        <template #body="{ data }">
+                            <div class="relative flex items-center group min-h-[24px] w-full">
+                                <p v-if="column.type === 'longtext'" :class="column.class" v-tooltip.top="(column.display(_.get(data, key), data) ?? '')"
+                                    class="text-nowrap">
+                                    {{ column.display(_.truncate(data[key], { length: 20 }), data) ?? '—' }}
+                                </p>
+                                <p v-else class="text-nowrap" :class="column.class">{{ column.display(_.get(data, key), data) ?? '—' }}</p>
+                                <Pen v-if="column.editable" class="w-3 h-3 absolute right-0 top-0 hidden group-hover:block" />
+                            </div>
 
-        <!-- Мобильная версия -->
-        <template v-else>
-            <Column>
-                <template #filter>
-                    <InputText v-model="globalSearchString" fluid placeholder="Поиск..." />
-                </template>
-                <template #body="{ data }">
-                    <div class="flex flex-col gap-2">
-                        <div v-for="(column, name, index) in columns" :key="name">
-                            <template v-if="column.showOnMobileSummary || index === 0">
-                                <div class="flex justify-between items-center bg-gray-100 p-2 rounded-md">
-                                    <p class="font-bold text-lg">{{ getFieldDisplayValue(data, name, column) }}</p>
-                                    <div class="flex gap-2">
-                                        <Button v-if="startEdit" size="small" text @click="handleStartEdit(data)"
-                                            icon="pi pi-pencil" />
-                                        <Button v-if="startDelete" severity="danger" size="small" text
-                                            @click="handleStartDelete(data)" icon="pi pi-trash" />
-                                    </div>
-                                </div>
+                        </template>
+                        <template #editor="{ data }">
+                            <template v-if="column.editable">
+                                <Select v-if="column.type === 'select'" v-model="data[key]" size="small" fluid
+                                    :options="column.editOptions()" option-label="label" option-value="value"
+                                    placeholder="Поиск..." filter showClear  />
+                                <InputNumber v-else-if="column.type === 'integer'" v-model="data[key]" size="small" fluid
+                                    type="number" />
+                                <InputNumber v-else-if="column.type === 'number'" v-model="data[key]" size="small" fluid
+                                    type="number" :maxFractionDigits="4" />
+                                <InputText v-else v-model="data[key]" size="small" fluid type="text" />
                             </template>
                             <template v-else>
-                                <div class="flex flex-col last:border-b-0 border-b border-gray-200 pb-2 px-2">
-                                    <p class="font-medium text-gray-500 text-sm">{{ column.label }}</p>
-                                    <template v-if="column.type === 'longtext' && data[name]">
-                                        <Button size="small" text @click="showLongtextDialog(column.label, data[name])"
-                                            icon="pi pi-eye" />
-                                    </template>
-                                    <template v-else>
-                                        <p class="font-bold">{{ getFieldDisplayValue(data, name, column) }}</p>
-                                    </template>
-                                </div>
+                                <p v-if="column.type === 'longtext'" v-tooltip.top="column.display(_.get(data, key), data)"
+                                    class="text-nowrap">
+                                    {{ column.display(_.truncate(data[key], { length: 20 }), data) }}
+                                </p>
+                                <p v-else class="text-nowrap">{{ column.display(_.get(data, key), data) }}</p>
                             </template>
-                        </div>
-                    </div>
+                        </template>
+                        <template #filter="{ filterModel, filterCallback }">
+                            <InputNumber v-if="column.type === 'integer'" v-model="filterModel.value" size="small" fluid
+                                type="number" placeholder="Поиск..." @input="filterCallback()" />
+                            <InputNumber v-else-if="column.type === 'number'" v-model="filterModel.value" size="small" fluid
+                                type="number" :maxFractionDigits="4" placeholder="Поиск..." @input="filterCallback()" />
+                            <InputText v-else v-model="filterModel.value" size="small" fluid type="text" placeholder="Поиск..."
+                                @input="filterCallback()" />
+                        </template>
+                    </Column>
                 </template>
-            </Column>
-        </template>
-    </DataTable>
 
-    <!-- Модальное окно для отображения longtext -->
-    <Dialog v-model:visible="longtextDialogVisible" :header="longtextDialogTitle" modal class="w-[90vw] md:w-[50vw]">
-        <div class="whitespace-pre-wrap">{{ longtextDialogContent }}</div>
-        <template #footer>
-            <Button label="Закрыть" @click="hideLongtextDialog" />
+                <Column class="w-[7%]" v-if="startEdit || startDelete">
+                    <template #body="{ data }">
+                        <div class="flex gap-2">
+                            <Button v-if="startEdit" size="small" text @click="handleStartEdit(data)" icon="pi pi-pencil" />
+                            <Button v-if="startDelete" size="small" severity="danger" text @click="handleStartDelete(data)"
+                                icon="pi pi-trash" />
+                        </div>
+                    </template>
+                </Column>
+            </DataTable>
         </template>
-    </Dialog>
+        <div v-else class="p-4">
+            <p class="text-center text-gray-500">Ресурс не сконфигурирован для отображения в таблице</p>
+        </div>
+    </template>
+    <div v-else class="p-4">
+        <p class="text-center text-gray-500">Нет данных</p>
+    </div>
+
 </template>
-
-<style scoped>
-/* Мобильные стили уже встроены в Tailwind классы */
-</style>
